@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
+import { fetchFullCatalog } from "@/lib/data-fetcher";
 import toast from "react-hot-toast";
 
 import { usePathname } from "next/navigation";
@@ -29,12 +30,215 @@ const makeSlug = (text = "") =>
         .trim()
         .replace(/[^a-z0-9\s-]/g, "")
         .replace(/\s+/g, "-");
+
+const loadImageBase64 = async (src) => {
+    try {
+        if (!src.startsWith("http")) {
+            return new Promise((resolve, reject) => {
+                const img = new window.Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    try {
+                        resolve(canvas.toDataURL("image/png"));
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                img.onerror = (e) => reject(e);
+                img.src = src;
+            });
+        }
+
+        // Method 1: Fetch via our local proxy (bypasses CORS on Firebase Storage securely, preserves original PNG/JPEG format)
+        try {
+            const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(src)}`;
+            const response = await fetch(proxyUrl);
+            if (response.ok) {
+                const blob = await response.blob();
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error("FileReader failed"));
+                    reader.readAsDataURL(blob);
+                });
+            }
+        } catch (proxyErr) {
+            console.warn("Proxy method failed, falling back to direct fetch...", proxyErr);
+        }
+
+        // Method 2: Fallback direct fetch (bypasses browser cache collision while keeping token intact)
+        try {
+            const response = await fetch(src, { cache: "no-cache" });
+            if (response.ok) {
+                const blob = await response.blob();
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error("FileReader failed"));
+                    reader.readAsDataURL(blob);
+                });
+            }
+        } catch (fetchErr) {
+            console.warn("fetch method failed, falling back to canvas method...", fetchErr);
+        }
+
+        // Method 3: Fallback to HTML Image element with crossOrigin anonymous
+        return await new Promise((resolve, reject) => {
+            const img = new window.Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                try {
+                    resolve(canvas.toDataURL("image/png"));
+                } catch (e) {
+                    reject(e);
+                }
+            };
+            img.onerror = (e) => reject(new Error("Image element load failed"));
+            img.src = src;
+        });
+    } catch (err) {
+        console.error("loadImageBase64 failed for src:", src, err);
+        throw err;
+    }
+};
+
+const getProductSpecs = (product) => {
+    const specsMap = new Map();
+
+    // Standard specifications (order-preserved)
+    const standardFields = [
+        ["Brand", "brand"],
+        ["Model", "model"],
+        ["Instrument", "instrument"],
+        ["Category", "category"],
+        ["Capacity", "capacity"],
+        ["Throughput", "throughput"],
+        ["Usage", "usage"],
+        ["Automation", "automation"],
+        ["Availability", "availability"]
+    ];
+
+    standardFields.forEach(([label, key]) => {
+        const val = product[key];
+        if (val && String(val).trim() && String(val).trim() !== "N/A") {
+            specsMap.set(label, String(val).trim());
+        }
+    });
+
+    const blacklist = new Set([
+        "title", "desc", "description", "image", "images", "slug",
+        "uid", "video", "pdf", "isPublished", "category", "subCategory",
+        "brand", "model", "instrument", "capacity", "throughput",
+        "usage", "automation", "availability",
+        "price", "categoryProductId", "category_product_id", "categoryproductid",
+        "id", "createdAt", "created_at", "createdat"
+    ]);
+
+    // Parse parameters field if it exists
+    if (product.parameters && typeof product.parameters === "string") {
+        const parts = product.parameters.split("|");
+        parts.forEach(part => {
+            const colonIndex = part.indexOf(":");
+            if (colonIndex !== -1) {
+                const label = part.substring(0, colonIndex).trim();
+                const value = part.substring(colonIndex + 1).trim();
+                const lowerLabel = label.toLowerCase();
+                if (label && value && value !== "N/A" &&
+                    !blacklist.has(lowerLabel) &&
+                    !lowerLabel.includes("price") &&
+                    !lowerLabel.includes("id") &&
+                    !lowerLabel.includes("createdat") &&
+                    !lowerLabel.includes("created_at") &&
+                    !lowerLabel.includes("ispublished")
+                ) {
+                    const cleanLabel = label.replace(/\b\w/g, (c) => c.toUpperCase());
+                    specsMap.set(cleanLabel, value);
+                }
+            }
+        });
+    }
+
+    // Parse desc field if it exists and contains pipes (sometimes used as fallback)
+    if (product.desc && typeof product.desc === "string" && product.desc.includes("|") && !product.parameters) {
+        const parts = product.desc.split("|");
+        parts.forEach(part => {
+            const colonIndex = part.indexOf(":");
+            if (colonIndex !== -1) {
+                const label = part.substring(0, colonIndex).trim();
+                const value = part.substring(colonIndex + 1).trim();
+                const lowerLabel = label.toLowerCase();
+                if (label && value && value !== "N/A" &&
+                    !blacklist.has(lowerLabel) &&
+                    !lowerLabel.includes("price") &&
+                    !lowerLabel.includes("id") &&
+                    !lowerLabel.includes("createdat") &&
+                    !lowerLabel.includes("created_at") &&
+                    !lowerLabel.includes("ispublished")
+                ) {
+                    const cleanLabel = label.replace(/\b\w/g, (c) => c.toUpperCase());
+                    specsMap.set(cleanLabel, value);
+                }
+            }
+        });
+    }
+
+    // Dynamically add all other non-metadata, non-blacklisted keys
+    Object.entries(product).forEach(([key, val]) => {
+        const lowerKey = key.toLowerCase();
+        if (blacklist.has(key) ||
+            lowerKey.includes("price") ||
+            lowerKey.includes("id") ||
+            lowerKey.includes("createdat") ||
+            lowerKey.includes("created_at") ||
+            lowerKey.includes("ispublished") ||
+            lowerKey === "parameters"
+        ) {
+            return;
+        }
+
+        if (typeof val === "string" || typeof val === "number") {
+            const cleanVal = String(val).trim();
+            if (cleanVal && cleanVal !== "N/A") {
+                const label = key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/[_-]/g, " ")
+                    .trim()
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
+                specsMap.set(label, cleanVal);
+            }
+        }
+    });
+
+    return Array.from(specsMap.entries());
+};
+
+const getWebsiteDomain = () => {
+    if (typeof window !== "undefined") {
+        const host = window.location.hostname;
+        if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
+            return host;
+        }
+    }
+    return "humarilab.in";
+};
+
 export default function ProductDetails({ slug }) {
     const [product, setProduct] = useState(null);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [selectedImage, setSelectedImage] = useState("");
     const [selectedMedia, setSelectedMedia] = useState("image");
     const [showShare, setShowShare] = useState(false);
+    const [contactInfo, setContactInfo] = useState([]);
+    const [downloadingBrochure, setDownloadingBrochure] = useState(false);
 
     const shareRef = useRef();
     const [form, setForm] = useState({
@@ -51,108 +255,31 @@ export default function ProductDetails({ slug }) {
         .split("/")
         .filter(Boolean);
 
-    const city =
-        pathParts.length > 1
-            ? pathParts[0]
-            : "India";
+    const isDistrictRoute = pathParts.length > 2 && pathParts[1] === "items";
+    const city = isDistrictRoute ? pathParts[0] : "India";
 
     const cityName =
-        city.charAt(0).toUpperCase() +
-        city.slice(1);
+        city
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase());
 
     useEffect(() => {
         const loadProduct = async () => {
             try {
-
-                // NORMAL PRODUCTS
-                const snap = await getDoc(
-                    doc(
-                        db,
-                        "websites",
-                        "centralbiomedicals",
-                        "pages",
-                        "products"
-                    )
-                );
-
-                let allProducts = [];
-
-                if (snap.exists()) {
-                    allProducts = (snap.data().products || []).map((item) => ({
-                        ...item,
-                        slug:
-                            item.slug ||
-                            item.productSlug ||
-                            makeSlug(item.title),
-                    }));
-                }
-
-                // CATEGORY PRODUCTS
-                const categorySnap = await getDocs(
-                    collection(
-                        db,
-                        "websites",
-                        "centralbiomedicals",
-                        "pages",
-                        "categoryproducts",
-                        "categories"
-                    )
-                );
-
-                categorySnap.forEach((docSnap) => {
-                    const data = docSnap.data();
-
-                    if (data.products?.length) {
-                        allProducts.push(
-                            ...(data.products || []).map((item) => ({
-                                ...item,
-                                slug:
-                                    item.slug ||
-                                    item.productSlug ||
-                                    makeSlug(item.title),
-                            }))
-                        );
-                    }
-                });
-
+                const allProducts = await fetchFullCatalog();
                 const found = allProducts.find(
                     (p) => p.slug === slug
                 );
-                console.log("URL SLUG:", slug);
-
-                allProducts.forEach((p) => {
-                    console.log("PRODUCT:", p.title);
-                    console.log("PRODUCT SLUG:", p.slug);
-                });
-                console.log("SLUG FROM URL:", slug);
-                console.log(
-                    "TOTAL PRODUCTS:",
-                    allProducts.length
-                );
-                console.log(
-                    "FOUND PRODUCT:",
-                    found
-                );
-
                 setProduct(found || null);
 
                 if (found) {
-
-                    if (
-                        found.images?.length > 0
-                    ) {
-                        setSelectedImage(
-                            found.images[0]
-                        );
+                    if (found.images?.length > 0) {
+                        setSelectedImage(found.images[0]);
                     } else {
-                        setSelectedImage(
-                            found.image || ""
-                        );
+                        setSelectedImage(found.image || "");
                     }
-
                     setSelectedMedia("image");
                 }
-
             } catch (error) {
                 console.error(error);
             }
@@ -193,7 +320,7 @@ export default function ProductDetails({ slug }) {
                 collection(
                     db,
                     "websitesQueries",
-                    "centralbiomedicals",
+                    "humarilabin",
                     "productQueries"
                 ),
                 {
@@ -234,10 +361,25 @@ export default function ProductDetails({ slug }) {
                 product.desc ||
                 product.description ||
                 product.title,
+            sku: product.model || product.slug,
+            mpn: product.model || "N/A",
             brand: {
                 "@type": "Brand",
-                name: product.brand || "Central Biomedicals",
+                name: product.brand || "Raj Biosis",
             },
+            offers: {
+                "@type": "AggregateOffer",
+                priceCurrency: "INR",
+                lowPrice: "5000",
+                highPrice: "500000",
+                offerCount: "1",
+                priceSpecification: {
+                    "@type": "PriceSpecification",
+                    price: "0",
+                    priceCurrency: "INR",
+                    valueAddedTaxIncluded: false
+                }
+            }
         }
         : null;
 
@@ -259,10 +401,37 @@ export default function ProductDetails({ slug }) {
                     name: "Do you provide installation support?",
                     acceptedAnswer: {
                         "@type": "Answer",
-                        text: "Yes, installation and technical support are available.",
+                        text: "Yes. Equipment installation guidance and technical support are available where applicable.",
                     },
                 },
             ],
+        }
+        : null;
+
+    const breadcrumbSchema = product
+        ? {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": isDistrictRoute ? `https://humarilab.in/${city}` : "https://humarilab.in"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Products",
+                    "item": isDistrictRoute ? `https://humarilab.in/${city}/items` : "https://humarilab.in/items"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 3,
+                    "name": product.title,
+                    "item": isDistrictRoute ? `https://humarilab.in/${city}/items/${slug}` : `https://humarilab.in/items/${slug}`
+                }
+            ]
         }
         : null;
 
@@ -326,6 +495,215 @@ ${product?.desc}
         return () =>
             document.removeEventListener("mousedown", close);
     }, []);
+
+    useEffect(() => {
+        const loadContact = async () => {
+            try {
+                const snap = await getDoc(
+                    doc(db, "websites", "humarilabin", "pages", "contact")
+                );
+                if (snap.exists()) {
+                    setContactInfo(snap.data().contactInfo || []);
+                }
+            } catch (err) {
+                console.error("Error loading contact info in details:", err);
+            }
+        };
+        loadContact();
+    }, []);
+
+    const handleDownloadBrochure = async () => {
+        if (!product) return;
+        try {
+            setDownloadingBrochure(true);
+            const { jsPDF } = await import("jspdf");
+            const doc = new jsPDF({
+                orientation: "portrait",
+                unit: "mm",
+                format: "a4",
+            });
+
+            // Load logo
+            let logoBase64 = null;
+            try {
+                logoBase64 = await loadImageBase64("/logo.png");
+            } catch (e) {
+                console.error("Error loading brochure logo:", e);
+            }
+
+            // Load product image
+            const imgUrl = product.image || (product.images && product.images[0]);
+            let productImgBase64 = null;
+            if (imgUrl) {
+                try {
+                    productImgBase64 = await loadImageBase64(imgUrl);
+                } catch (e) {
+                    console.error("Error loading product image for brochure:", e);
+                }
+            }
+
+            // Layout Dimensions
+            const margin = 15;
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const contentWidth = pageWidth - 2 * margin;
+
+            // Colors
+            const colorPrimary = [111, 78, 55];
+            const colorDark = [44, 44, 44];
+            const colorGray = [107, 114, 128];
+            const colorLightBorder = [234, 219, 200];
+
+            // 1. HEADER
+            let headerLeftOffset = margin;
+            if (logoBase64) {
+                doc.addImage(logoBase64, "PNG", margin, 15, 12, 12);
+                headerLeftOffset += 16;
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.text("Raj Biosis", headerLeftOffset, 21);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(colorGray[0], colorGray[1], colorGray[2]);
+            doc.text("Biomedical & Diagnostic Equipment", headerLeftOffset, 26);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+
+            const websiteText = getWebsiteDomain();
+            const rawPhone = contactInfo.find(x => x.label === "Phone Number")?.value || "+91 9983123469";
+            const emailText = contactInfo.find(x => x.label === "Email Address")?.value || "rajbiosis@yahoo.in";
+            const phoneNumbersList = Array.isArray(rawPhone) ? rawPhone.filter(Boolean) : rawPhone ? [rawPhone] : [];
+            const phoneString = phoneNumbersList.join(", ");
+
+            doc.text(`Website: ${websiteText}`, 140, 20);
+            doc.text(`Email: ${emailText}`, 140, 25);
+            doc.text(`Phone: ${phoneString}`, 140, 30);
+
+            doc.setDrawColor(colorLightBorder[0], colorLightBorder[1], colorLightBorder[2]);
+            doc.setLineWidth(0.5);
+            doc.line(margin, 35, pageWidth - margin, 35);
+
+            // 2. PRODUCT TITLE
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+            const titleLines = doc.splitTextToSize(product.title, contentWidth);
+            doc.text(titleLines, margin, 45);
+            const titleHeight = titleLines.length * 7;
+
+            // 3. PRODUCT IMAGE
+            const imageY = 48 + titleHeight;
+            const imageHeight = 55;
+            const imageWidth = 70;
+            const imageX = margin + (contentWidth - imageWidth) / 2;
+
+            doc.setDrawColor(colorLightBorder[0], colorLightBorder[1], colorLightBorder[2]);
+            doc.setFillColor(255, 248, 243);
+            doc.roundedRect(imageX - 5, imageY - 2, imageWidth + 10, imageHeight + 4, 4, 4, "FD");
+
+            if (productImgBase64) {
+                let format = "JPEG";
+                if (productImgBase64.startsWith("data:image/png")) {
+                    format = "PNG";
+                }
+                doc.addImage(productImgBase64, format, imageX, imageY, imageWidth, imageHeight);
+            } else {
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(colorGray[0], colorGray[1], colorGray[2]);
+                doc.text("Product Image Sourced Online", imageX + 10, imageY + imageHeight / 2);
+            }
+
+            // 4. PRODUCT DESCRIPTION
+            const descY = imageY + imageHeight + 10;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.text("Product Overview", margin, descY);
+
+            doc.setDrawColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.setLineWidth(0.5);
+            doc.line(margin, descY + 2, margin + 25, descY + 2);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(colorGray[0], colorGray[1], colorGray[2]);
+
+            let descText = product.desc || product.description || "No description available.";
+            if (descText.length > 400) {
+                descText = descText.substring(0, 400) + "...";
+            }
+            const descLines = doc.splitTextToSize(descText, contentWidth);
+            doc.text(descLines, margin, descY + 8);
+            const descHeight = descLines.length * 4.5;
+
+            // 5. SPECIFICATIONS
+            const specsY = descY + 12 + descHeight;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.text("Technical Specifications", margin, specsY);
+
+            doc.setDrawColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.setLineWidth(0.5);
+            doc.line(margin, specsY + 2, margin + 35, specsY + 2);
+
+            const specs = getProductSpecs(product);
+
+            let specRowY = specsY + 8;
+            doc.setFontSize(8.5);
+
+            for (let i = 0; i < specs.length; i++) {
+                const label = specs[i][0];
+                const value = String(specs[i][1]);
+
+                // Print Label
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+                doc.text(`${label}:`, margin, specRowY);
+
+                // Wrap Value to fit the page width
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(colorGray[0], colorGray[1], colorGray[2]);
+
+                const valueLines = doc.splitTextToSize(value, contentWidth - 42);
+                doc.text(valueLines, margin + 42, specRowY);
+
+                // Adjust specRowY based on the number of wrapped lines
+                specRowY += valueLines.length * 4.5 + 2;
+
+                // Check if we are running out of page space
+                if (specRowY > pageHeight - 20) {
+                    doc.addPage();
+                    specRowY = margin + 10;
+                }
+            }
+
+            // 6. FOOTER
+            doc.setDrawColor(colorLightBorder[0], colorLightBorder[1], colorLightBorder[2]);
+            doc.setLineWidth(0.3);
+            doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(7.5);
+            doc.setTextColor(colorGray[0], colorGray[1], colorGray[2]);
+            doc.text("Raj Biosis | Quality Sourcing • Reliable Supply • Technical Support Partner", pageWidth / 2, pageHeight - 10, { align: "center" });
+
+            doc.save(`${product.title.replace(/\s+/g, "_")}_Brochure.pdf`);
+            toast.success("Brochure downloaded successfully!");
+        } catch (e) {
+            console.error("Error creating PDF brochure:", e);
+            toast.error("Failed to generate brochure PDF.");
+        } finally {
+            setDownloadingBrochure(false);
+        }
+    };
 
     if (!product) {
         return (
@@ -394,16 +772,23 @@ ${product?.desc}
                     __html: JSON.stringify(faqSchema),
                 }}
             />
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(breadcrumbSchema),
+                }}
+            />
             <div className="container-custom">
                 <div className="mb-6 text-sm text-slate-500">
                     Home / Products / {product.title}
                 </div>
                 {/* Top Section */}
 
-                <div className="grid lg:grid-cols-2 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-[500px_1fr] xl:grid-cols-[600px_1fr] gap-8 md:gap-12">
                     {/* Product Image */}
 
-                    <div>
+                    <div className="space-y-8">
 
                         <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[580px] overflow-hidden rounded-[24px] md:rounded-[36px] border border-[#EADBC8] bg-[#FFF8F3] shadow-xl shadow-[#EADBC8]/30 transition-all duration-300 hover:shadow-2xl hover:shadow-[#B08968]/20">
 
@@ -423,20 +808,13 @@ ${product?.desc}
                             ) : (
 
                                 <>
-                                    {!imageLoaded && (
-                                        <div className="absolute inset-0 animate-pulse bg-[#F5ECE3]" />
-                                    )}
-
-                                    <Image
-                                        src={selectedImage || product.image}
+                                    <img
+                                        src={selectedImage || product.image || "/placeholder.jpg"}
                                         alt={product.title}
-                                        fill
-                                        priority
-                                        onLoad={() => setImageLoaded(true)}
-                                        className={`object-contain p-6 transition duration-500 ${imageLoaded
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                            }`}
+                                        className="h-full w-full object-contain p-6"
+                                        onError={(e) => {
+                                            e.currentTarget.src = "/placeholder.jpg";
+                                        }}
                                     />
                                 </>
 
@@ -462,12 +840,13 @@ ${product?.desc}
                                         : "border-[#DCCBB8] hover:border-[#B08968]"
                                         }`}
                                 >
-                                    <Image
-                                        src={img}
+                                    <img
+                                        src={img || "/placeholder.jpg"}
                                         alt=""
-                                        width={80}
-                                        height={80}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                        onError={(e) => {
+                                            e.currentTarget.src = "/placeholder.jpg";
+                                        }}
                                     />
                                 </button>
 
@@ -514,142 +893,8 @@ ${product?.desc}
 
                         </div>
 
-                    </div>
-
-                    {/* Product Details */}
-
-                    <div>
-
-                        <div className="relative flex items-start justify-between gap-4">
-
-                            <div>
-                                {/* Badge */}
-                                <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-1.5 text-sm font-semibold text-[#6F4E37] shadow-sm">
-                                    Premium Biomedical Equipment
-                                </span>
-
-                                {/* Title */}
-                                <h1 className="mt-4 text-2xl font-extrabold leading-tight text-[#2C2C2C] sm:text-3xl md:text-4xl lg:text-5xl">
-                                    {product.title}
-                                </h1>
-
-                                {/* Accent Line */}
-                                <div className="mt-4 h-1 w-28 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
-                            </div>
-
-                            {/* Share */}
-                            <div
-                                ref={shareRef}
-                                className="relative"
-                            >
-                                <button
-                                    onClick={handleNativeShare}
-                                    className="group flex h-12 w-12 items-center justify-center rounded-full border border-[#DCCBB8] bg-[#FFF8F3] text-[#6F4E37] shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-[#6F4E37] hover:text-white hover:shadow-xl"
-                                >
-                                    <FaShareAlt
-                                        size={18}
-                                        className="transition-transform duration-300 group-hover:scale-110"
-                                    />
-                                </button>
-
-                                {showShare && (
-                                    <div className="absolute right-0 top-14 z-50 w-60 overflow-hidden rounded-2xl border border-[#EADBC8] bg-white shadow-2xl">
-
-                                        <button
-                                            onClick={handleCopy}
-                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
-                                        >
-                                            <FaLink className="text-[#6F4E37]" />
-                                            Copy Link
-                                        </button>
-
-                                        <button
-                                            onClick={handleWhatsapp}
-                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
-                                        >
-                                            <FaWhatsapp className="text-green-600" />
-                                            WhatsApp
-                                        </button>
-
-                                        <button
-                                            onClick={handleFacebook}
-                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
-                                        >
-                                            <FaFacebook className="text-blue-600" />
-                                            Facebook
-                                        </button>
-
-                                        <button
-                                            onClick={handleInstagram}
-                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
-                                        >
-                                            <FaInstagram className="text-pink-600" />
-                                            Instagram
-                                        </button>
-
-                                    </div>
-                                )}
-                            </div>
-
-                        </div>
-
-                        <div className="mt-6 rounded-[32px] border border-[#EADBC8] bg-white p-6 shadow-xl shadow-[#EADBC8]/30 md:mt-8 md:p-8">
-
-                            {/* Header */}
-                            <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-1.5 text-sm font-semibold text-[#6F4E37] shadow-sm">
-                                Product Specifications
-                            </span>
-
-                            <h3 className="mt-4 text-2xl font-bold text-[#2C2C2C]">
-                                Technical Details
-                            </h3>
-
-                            <div className="mt-3 h-1 w-20 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
-
-                            {/* Specifications */}
-                            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-
-                                {[
-                                    ["Brand", product.brand],
-                                    ["Model", product.model],
-                                    ["Instrument", product.instrument],
-                                    ["Capacity", product.capacity],
-                                    ["Throughput", product.throughput],
-                                    ["Usage", product.usage],
-                                    ["Automation", product.automation],
-                                    ["Availability", product.availability],
-                                ].map(([label, value]) => (
-                                    <div
-                                        key={label}
-                                        className="rounded-2xl border border-[#EADBC8] bg-[#FFF8F3] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
-                                    >
-                                        <p className="text-xs font-semibold uppercase tracking-wider text-[#9A7B5F]">
-                                            {label}
-                                        </p>
-
-                                        <p className="mt-2 text-lg font-bold text-[#2C2C2C]">
-                                            {value || "N/A"}
-                                        </p>
-                                    </div>
-                                ))}
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                {/* Description + Form */}
-
-                <div className="mt-16">
-                    <div className="grid grid-cols-1 lg:grid-cols-[500px_1fr] xl:grid-cols-[600px_1fr] gap-6 md:gap-8">
-
                         {/* Quote Form */}
-
                         <div className="h-fit rounded-[24px] md:rounded-[32px] border border-[#EADBC8] bg-white p-5 shadow-xl shadow-[#EADBC8]/30 lg:sticky lg:top-24 sm:p-6 md:p-8">
-
                             {/* Badge */}
                             <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-2 text-sm font-semibold text-[#6F4E37] shadow-sm">
                                 Quick Enquiry
@@ -751,91 +996,171 @@ ${product?.desc}
                                     )}
                                 </button>
                             </form>
-
                         </div>
 
-                        {/* Description */}
+                    </div>
 
-                        <div className="rounded-[24px] border border-[#EADBC8] bg-white p-5 shadow-xl shadow-[#EADBC8]/30 md:rounded-[32px] md:p-10">
+                    {/* Product Details */}
 
-                            {/* Badge */}
-                            <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-2 text-sm font-semibold text-[#6F4E37] shadow-sm">
+                    <div className="space-y-8">
+
+                        <div className="relative flex items-start justify-between gap-4">
+
+                            <div>
+                                {/* Badge */}
+                                <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-1.5 text-sm font-semibold text-[#6F4E37] shadow-sm">
+                                    Premium Biomedical Equipment
+                                </span>
+
+                                {/* Title */}
+                                <h1 className="mt-4 text-2xl font-extrabold leading-tight text-[#2C2C2C] sm:text-3xl md:text-4xl lg:text-5xl">
+                                    {product.title}
+                                </h1>
+
+                                {/* Accent Line */}
+                                <div className="mt-4 h-1 w-28 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
+
+                                {/* Download Brochure Button */}
+                                <div className="mt-6 flex flex-wrap gap-4">
+                                    <button
+                                        onClick={handleDownloadBrochure}
+                                        disabled={downloadingBrochure}
+                                        className="group inline-flex items-center gap-2 rounded-2xl bg-[#6F4E37] px-6 py-3.5 font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-[#5B3E2C] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-75"
+                                    >
+                                        {downloadingBrochure ? (
+                                            <>
+                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Generating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transition-transform duration-300 group-hover:translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                                Download Brochure
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Share */}
+                            <div
+                                ref={shareRef}
+                                className="relative"
+                            >
+                                <button
+                                    onClick={handleNativeShare}
+                                    className="group flex h-12 w-12 items-center justify-center rounded-full border border-[#DCCBB8] bg-[#FFF8F3] text-[#6F4E37] shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-[#6F4E37] hover:text-white hover:shadow-xl"
+                                >
+                                    <FaShareAlt
+                                        size={18}
+                                        className="transition-transform duration-300 group-hover:scale-110"
+                                    />
+                                </button>
+
+                                {showShare && (
+                                    <div className="absolute right-0 top-14 z-50 w-60 overflow-hidden rounded-2xl border border-[#EADBC8] bg-white shadow-2xl">
+
+                                        <button
+                                            onClick={handleCopy}
+                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
+                                        >
+                                            <FaLink className="text-[#6F4E37]" />
+                                            Copy Link
+                                        </button>
+
+                                        <button
+                                            onClick={handleWhatsapp}
+                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
+                                        >
+                                            <FaWhatsapp className="text-green-600" />
+                                            WhatsApp
+                                        </button>
+
+                                        <button
+                                            onClick={handleFacebook}
+                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
+                                        >
+                                            <FaFacebook className="text-blue-600" />
+                                            Facebook
+                                        </button>
+
+                                        <button
+                                            onClick={handleInstagram}
+                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[#2C2C2C] transition hover:bg-[#FFF8F3]"
+                                        >
+                                            <FaInstagram className="text-pink-600" />
+                                            Instagram
+                                        </button>
+
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Description & Specs Card */}
+                        <div className="mt-8 rounded-[24px] border border-[#EADBC8] bg-white p-5 shadow-lg shadow-[#EADBC8]/20 md:p-6">
+                            <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-3.5 py-1 text-xs font-semibold text-[#6F4E37] shadow-sm">
                                 Product Information
                             </span>
 
-                            {/* Heading */}
-                            <h3 className="mt-5 text-2xl font-extrabold text-[#2C2C2C] md:text-3xl">
+                            <h3 className="mt-3 text-xl font-bold text-[#2C2C2C]">
                                 Product Description
                             </h3>
+                            <div className="mt-2 h-0.5 w-16 bg-[#B08968]" />
 
-                            {/* Accent Line */}
-                            <div className="mt-3 h-1 w-24 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
-
-                            {/* Description */}
-                            <p className="mt-6 text-base leading-8 text-[#6B7280] md:text-lg md:leading-9">
-                                {product.desc ||
-                                    product.description ||
-                                    "No description available."}
+                            <p className="mt-4 text-sm leading-7 text-[#6B7280]">
+                                {product.desc || product.description || "No description available."}
                             </p>
 
-                            {/* Specifications */}
-                            <div className="mt-12">
-                                <div className="mb-6 flex items-center justify-between">
-                                    <h3 className="text-2xl font-bold text-[#2C2C2C]">
-                                        Technical Specifications
-                                    </h3>
-
-                                    <span className="rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-1.5 text-sm font-semibold text-[#6F4E37]">
-                                        Specifications
-                                    </span>
-                                </div>
-
-                                <div className="overflow-hidden rounded-2xl border border-[#EADBC8]">
-                                    <table className="w-full border-collapse">
+                            <div className="mt-6">
+                                <h4 className="text-sm font-bold text-[#2C2C2C] mb-3">
+                                    Technical Specifications
+                                </h4>
+                                <div className="overflow-hidden rounded-xl border border-[#EADBC8]">
+                                    <table className="w-full border-collapse text-xs">
                                         <tbody>
-
-                                            {[
-                                                ["Brand", product.brand],
-                                                ["Model", product.model],
-                                                ["Usage", product.usage],
-                                                ["Automation", product.automation],
-                                                ["Capacity", product.capacity],
-                                                ["Throughput", product.throughput],
-                                            ].map(([label, value], index) => (
+                                            {getProductSpecs(product).map(([label, value], index) => (
                                                 <tr
                                                     key={label}
                                                     className={index % 2 === 0 ? "bg-[#FFF8F3]" : "bg-white"}
                                                 >
-                                                    <td className="w-1/3 border-b border-[#EADBC8] px-5 py-4 font-semibold text-[#6F4E37]">
+                                                    <td className="w-1/3 border-b border-[#EADBC8] px-4 py-2.5 font-semibold text-[#6F4E37]">
                                                         {label}
                                                     </td>
-
-                                                    <td className="border-b border-[#EADBC8] px-5 py-4 text-[#2C2C2C]">
-                                                        {value || "N/A"}
+                                                    <td className="border-b border-[#EADBC8] px-4 py-2.5 text-[#2C2C2C]">
+                                                        {value}
                                                     </td>
                                                 </tr>
                                             ))}
-
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* SEO Content & FAQs */}
+                        <div className="rounded-[24px] border border-[#EADBC8] bg-white p-5 shadow-xl shadow-[#EADBC8]/30 md:rounded-[32px] md:p-10">
 
                             {/* SEO Content */}
-                            <div className="mt-14">
+                            <div>
 
                                 <span className="inline-block rounded-full border border-[#DCCBB8] bg-[#FFF8F3] px-4 py-2 text-sm font-semibold text-[#6F4E37] shadow-sm">
                                     Why Choose Us
                                 </span>
 
                                 <h3 className="mt-5 text-2xl font-bold text-[#2C2C2C]">
-                                    Why Choose Central Biomedicals in {cityName}?
+                                    Why Choose Raj Biosis in {cityName}?
                                 </h3>
 
                                 <div className="mt-3 h-1 w-20 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
 
                                 <p className="mt-6 leading-8 text-[#6B7280]">
-                                    Central Biomedicals is a trusted supplier and distributor of{" "}
+                                    Raj Biosis is a trusted supplier and distributor of{" "}
                                     <strong className="text-[#6F4E37]">
                                         {product.title}
                                     </strong>{" "}
@@ -909,7 +1234,7 @@ ${product?.desc}
                                     <div className="mt-5 h-1 w-24 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
 
                                     <p className="mt-6 text-lg leading-8 text-[#6B7280]">
-                                        Central Biomedicals supplies <strong>{product.title}</strong> in{" "}
+                                        Raj Biosis supplies <strong>{product.title}</strong> in{" "}
                                         <strong>{cityName}</strong> with complete technical support,
                                         installation assistance, maintenance services, and reliable customer
                                         support for hospitals, pathology laboratories, diagnostic centres,
@@ -932,7 +1257,7 @@ ${product?.desc}
                                     <div className="mt-5 h-1 w-24 rounded-full bg-gradient-to-r from-[#6F4E37] via-[#B08968] to-[#EADBC8]" />
 
                                     <p className="mt-6 text-lg leading-8 text-[#6B7280]">
-                                        Central Biomedicals is a trusted dealer of{" "}
+                                        Raj Biosis is a trusted dealer of{" "}
                                         <strong>{product.title}</strong> in <strong>{cityName}</strong>.
                                         We supply premium biomedical equipment, laboratory instruments,
                                         diagnostic analyzers, and healthcare devices with professional
@@ -979,8 +1304,8 @@ ${product?.desc}
 
                                     <p className="mt-6 text-lg leading-8 text-[#6B7280]">
                                         Buy high-quality <strong>{product.title}</strong> in{" "}
-                                        <strong>{cityName}</strong> at competitive prices. Contact Central
-                                        Biomedicals for the latest quotation, product availability, expert
+                                        <strong>{cityName}</strong> at competitive prices. Contact Raj
+                                        Biosis for the latest quotation, product availability, expert
                                         consultation, and complete installation support.
                                     </p>
 
@@ -1006,7 +1331,7 @@ ${product?.desc}
                                         The price of <strong>{product.title}</strong> in{" "}
                                         <strong>{cityName}</strong> depends on the brand, model,
                                         specifications, configuration, and available features. Contact
-                                        Central Biomedicals for the latest pricing, product availability,
+                                        Raj Biosis for the latest pricing, product availability,
                                         bulk order discounts, installation support, and fast delivery
                                         across <strong>{cityName}</strong>.
                                     </p>
@@ -1068,7 +1393,7 @@ ${product?.desc}
                                             a: `Yes, we supply biomedical equipment across India with secure packaging, logistics support and timely delivery.`,
                                         },
                                         {
-                                            q: `How can I contact Central Biomedicals?`,
+                                            q: `How can I contact Raj Biosis?`,
                                             a: `You can fill out the enquiry form on this page or contact our team directly by phone or email for product details and quotations.`,
                                         },
                                     ].map((faq, index) => (

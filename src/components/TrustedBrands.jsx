@@ -1,11 +1,11 @@
 export default function TrustedBrands() {
   const brands = [
-    "HealthCare+",
-    "BioMed Labs",
-    "MediCore",
-    "Life Diagnostics",
-    "Care Plus",
-  ];
+  "Erba Mannheim",
+  "Mindray Diagnostics",
+  "Roche Diagnostics",
+  "Abbott Labs",
+  "Sysmex"
+];
 
   return (
     <section className="relative overflow-hidden border-y border-[#EADBC8] bg-gradient-to-br from-[#F8F5F2] via-[#FFFDFB] to-[#F3ECE6] py-20">
@@ -20,7 +20,7 @@ export default function TrustedBrands() {
 
         <p className="mb-12 text-center text-lg font-semibold tracking-wide text-[#8D6E63]">
 
-          Trusted by Healthcare & Biomedical Organizations
+          Supplying Pathology Laboratory Instrumentation
 
         </p>
 

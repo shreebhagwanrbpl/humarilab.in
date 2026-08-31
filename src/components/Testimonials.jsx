@@ -7,22 +7,22 @@ export default function Testimonials() {
   const reviews = [
     {
       name: "Dr. Rajesh Kumar",
-      role: "Healthcare Specialist",
+      role: "Chief Pathologist",
       review:
-        "Central Biomedicals has consistently delivered reliable diagnostic equipment with outstanding support.",
+        "We set up our entire clinical pathology lab with their biochemistry and hematology analyzers. Flawless installation!",
     },
     {
       name: "Amit Sharma",
-      role: "Lab Director",
+      role: "Laboratory Director",
       review:
-        "Professional service, premium products, and excellent biomedical consultation experience.",
+        "Attentive engineer support and prompt NABL-compliant calibration checks for our CBC machines.",
     },
     {
       name: "Neha Verma",
-      role: "Research Head",
+      role: "Clinical Research Head",
       review:
-        "Their healthcare solutions improved our laboratory efficiency significantly.",
-    },
+        "Their diagnostic reagents and analyzer systems helped us double our daily testing throughput.",
+    }
   ];
 
   return (
@@ -37,9 +37,9 @@ export default function Testimonials() {
       <div className="container-custom relative z-10">
 
         <SectionTitle
-          badge="Testimonials"
-          title="What Our Clients Say"
-          description="Trusted by healthcare professionals, laboratories, and biomedical institutions."
+          badge="Client Testimonials"
+          title="What Pathologists Say"
+          description="Evaluated by clinical pathologists, laboratory directors, and diagnostics technicians."
           center
         />
 

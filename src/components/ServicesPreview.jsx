@@ -15,28 +15,28 @@ export default function ServicesPreview() {
   const services = [
     {
       icon: <Microscope size={30} />,
-      title: "Diagnostic Equipment",
+      title: "Hematology Systems",
       description:
-        "Advanced diagnostic systems designed for accurate and efficient healthcare testing.",
+        "Sourcing 3-part and 5-part hematology counters and CBC machines.",
     },
     {
       icon: <FlaskConical size={30} />,
-      title: "Laboratory Solutions",
+      title: "Biochemistry Analyzers",
       description:
-        "Reliable laboratory instruments and biomedical support for modern medical environments.",
+        "Installing automatic and semi-automatic biochemistry testing platforms.",
     },
     {
       icon: <ShieldCheck size={30} />,
-      title: "Maintenance Support",
+      title: "Urine Chemistry Devices",
       description:
-        "Professional technical support and maintenance for biomedical systems.",
+        "Providing urine chemistry strip analyzers and clinical diagnostics systems.",
     },
     {
       icon: <Stethoscope size={30} />,
-      title: "Healthcare Consultation",
+      title: "NABL Calibration",
       description:
-        "Expert guidance and consultation for healthcare and biomedical operations.",
-    },
+        "Ensuring CE/ISO compliance and NABL-conformant calibration for pathology instruments.",
+    }
   ];
 
   return (
@@ -53,9 +53,9 @@ export default function ServicesPreview() {
         {/* Title */}
 
         <SectionTitle
-          badge="Our Services"
-          title="Premium Diagnostic & Biomedical Services"
-          description="Providing advanced healthcare technologies, laboratory systems, and trusted biomedical solutions for modern diagnostics."
+          badge="Pathology Support Services"
+          title="Laboratory Equipment & Biomedical Services"
+          description="We support healthcare and laboratory teams with suitable technologies, equipment sourcing, and practical implementation guidance."
           center
         />
 

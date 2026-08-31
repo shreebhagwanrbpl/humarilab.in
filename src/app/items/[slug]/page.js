@@ -1,17 +1,62 @@
+import { db } from "@/lib/firebase";
+import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import ProductDetails from "./ProductDetails";
+
+const makeSlug = (text = "") =>
+    text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-");
+
+async function getProductBySlug(slug) {
+    try {
+        const snap = await getDoc(
+            doc(db, "websites", "humarilabin", "pages", "products")
+        );
+        let allProducts = [];
+        if (snap.exists()) {
+            allProducts = (snap.data().products || []).map((item) => ({
+                ...item,
+                slug: item.slug || item.productSlug || makeSlug(item.title),
+            }));
+        }
+        const categorySnap = await getDocs(
+            collection(db, "websites", "humarilabin", "pages", "categoryproducts", "categories")
+        );
+        categorySnap.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.products?.length) {
+                allProducts.push(
+                    ...(data.products || []).map((item) => ({
+                        ...item,
+                        slug: item.slug || item.productSlug || makeSlug(item.title),
+                    }))
+                );
+            }
+        });
+        return allProducts.find((p) => p.slug === slug) || null;
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
+    const product = await getProductBySlug(slug);
 
-    const productName = slug
+    const fallbackName = slug
         ?.replace(/-/g, " ")
         ?.replace(/\b\w/g, (c) => c.toUpperCase());
 
-    const title = `${productName} Supplier in India | Price, Dealer & Distributor | Central Biomedicals`;
+    const productName = product?.title || fallbackName;
+    const productDesc = product?.desc || product?.description || `Buy ${productName} at best price in India from Raj Biosis. Trusted biomedical and diagnostic equipment supplier.`;
 
-    const description = `Buy ${productName} at best price in India. Trusted supplier, dealer and distributor of ${productName} for hospitals, laboratories, diagnostic centers, research institutes and healthcare facilities. Contact Central Biomedicals for latest quotation and product details.`;
+    const title = `${productName} Supplier in India | Price, Dealer & Distributor | Raj Biosis`;
+    const description = `${productDesc.substring(0, 150)}... Contact Raj Biosis for latest quotation and product details.`;
 
-    const url = `https://centralbiomedicals.com/items/${slug}`;
+    const url = `https://humarilab.in/items/${slug}`;
 
     return {
         title,
@@ -22,24 +67,17 @@ export async function generateMetadata({ params }) {
             `${productName} Supplier`,
             `${productName} Dealer`,
             `${productName} Distributor`,
-            `${productName} Manufacturer`,
-            `${productName} Exporter`,
+            `Buy ${productName}`,
             `${productName} Price`,
             `${productName} Price in India`,
             `${productName} Supplier in India`,
-            `${productName} Dealer in India`,
-            `${productName} Distributor in India`,
-            `Buy ${productName}`,
-            `${productName} for Laboratory`,
-            `${productName} for Hospital`,
-            `${productName} for Diagnostic Center`,
             "Biomedical Equipment",
             "Medical Equipment",
             "Laboratory Equipment",
             "Diagnostic Equipment",
             "Hospital Equipment",
             "Healthcare Equipment",
-            "Central Biomedicals",
+            "Raj Biosis",
         ],
 
         alternates: {
@@ -50,15 +88,31 @@ export async function generateMetadata({ params }) {
             title,
             description,
             url,
-            siteName: "Central Biomedicals",
+            siteName: "Raj Biosis",
             type: "website",
             locale: "en_IN",
+            images: product?.image || product?.images?.[0] ? [
+                {
+                    url: product.image || product.images[0],
+                    width: 800,
+                    height: 600,
+                    alt: productName,
+                }
+            ] : [
+                {
+                    url: "/logo.png",
+                    width: 1200,
+                    height: 630,
+                    alt: "Raj Biosis",
+                }
+            ]
         },
 
         twitter: {
             card: "summary_large_image",
             title,
             description,
+            images: product?.image || product?.images?.[0] ? [product.image || product.images[0]] : ["/logo.png"],
         },
 
         robots: {
@@ -73,7 +127,7 @@ export async function generateMetadata({ params }) {
             },
         },
 
-        metadataBase: new URL("https://centralbiomedials.com"),
+        metadataBase: new URL("https://humarilab.in"),
     };
 }
 

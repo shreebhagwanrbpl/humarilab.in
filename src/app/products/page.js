@@ -26,7 +26,7 @@ export default function ProductsPage() {
       title: "Roche 9180 Electrolyte Reagent",
       image: "/images/product-1.jpg",
       description:
-        "High precision electrolyte reagent for Roche analyzers.",
+        "Electrolyte reagent designed for precise testing on compatible Roche analyzer platforms.",
       brand: "Roche",
       model: "9180",
       slug: "roche-9180-electrolyte-reagent",
@@ -175,10 +175,10 @@ export default function ProductsPage() {
   };
 
   return (
-  <>
+  <div className="site8-static">
     <PageBanner
-      title="Our Products"
-      subtitle="Explore advanced biomedical and diagnostic equipment designed for modern healthcare excellence."
+      title="Pathology & Laboratory Portfolio"
+      subtitle="Explore biomedical and diagnostic solutions that fit current laboratory practices and healthcare delivery requirements."
     />
 
     <section className="py-24 bg-slate-50">
@@ -188,7 +188,7 @@ export default function ProductsPage() {
         <SectionTitle
           badge="Featured Products"
           title="Premium Biomedical Equipment"
-          description="Discover premium diagnostic products for hospitals and laboratories."
+          description="Explore diagnostic equipment and supplies for hospital laboratories and independent testing facilities."
           center
         />
 
@@ -429,7 +429,7 @@ export default function ProductsPage() {
                             <div className="flex justify-center lg:justify-end">
 
                               <Link
-                                href={`/products/${product.slug}`}
+                                href={`/items/${product.slug}`}
                                 className="w-full lg:w-auto"
                               >
 
@@ -475,9 +475,9 @@ export default function ProductsPage() {
         <div className="max-w-7xl mx-auto px-5">
 
           <SectionTitle
-            badge="Why Choose Our Products"
+            badge="Why Choose Pathology & Laboratory Portfolio"
             title="Trusted Quality & Innovation"
-            description="Every product is manufactured to meet international quality standards with reliable support."
+            description="We favor products that meet recognized quality expectations and can be supported throughout their useful service life."
             center
           />
 
@@ -487,25 +487,25 @@ export default function ProductsPage() {
               {
                 icon: <ShieldCheck size={32} />,
                 title: "Certified Quality",
-                desc: "Premium products tested under strict quality standards.",
+                desc: "Products are assessed against application needs, specifications, and expected quality standards.",
               },
 
               {
                 icon: <Truck size={32} />,
                 title: "Fast Delivery",
-                desc: "Quick dispatch across India with secure packaging.",
+                desc: "We coordinate careful packaging and efficient delivery for orders shipped across India.",
               },
 
               {
                 icon: <BadgeCheck size={32} />,
                 title: "Trusted Support",
-                desc: "Professional customer assistance whenever required.",
+                desc: "Our team remains available for product questions, quotations, and equipment support.",
               },
 
               {
                 icon: <PackageCheck size={32} />,
                 title: "Premium Equipment",
-                desc: "High-performance biomedical equipment for laboratories.",
+                desc: "Professional laboratory equipment selected for demanding analytical and diagnostic workflows.",
               },
 
             ].map((item, index) => (
@@ -547,7 +547,7 @@ export default function ProductsPage() {
 
       <CTASection />
 
-    </>
+    </div>
 
   );
 

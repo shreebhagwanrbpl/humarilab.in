@@ -15,26 +15,22 @@ export default function WhyChooseUs() {
     {
       icon: <Microscope size={30} />,
       title: "Advanced Technology",
-      description:
-        "Modern biomedical and diagnostic equipment for accurate healthcare solutions.",
+      description: "Advanced clinical analyzers selected to ensure highly repeatable pathology outcomes and diagnostic precision.",
     },
     {
       icon: <ShieldCheck size={30} />,
       title: "Trusted Quality",
-      description:
-        "Reliable and certified diagnostic systems with premium quality standards.",
+      description: "Lab equipment chosen with strict compliance to CE/ISO and quality control standards.",
     },
     {
       icon: <HeartPulse size={30} />,
       title: "Healthcare Focused",
-      description:
-        "Delivering healthcare-driven biomedical solutions with precision and care.",
+      description: "We assist medical labs with customized workspace planning, brand options, and equipment integration.",
     },
     {
       icon: <BadgeCheck size={30} />,
       title: "Expert Support",
-      description:
-        "Professional consultation and technical support for all medical needs.",
+      description: "Reliable engineering assistance, on-site diagnostics calibration, and parts maintenance schedules.",
     },
   ];
 
@@ -52,9 +48,9 @@ export default function WhyChooseUs() {
         {/* Section Title */}
 
         <SectionTitle
-          badge="Why Choose Us"
-          title="Trusted Biomedical Excellence"
-          description="We deliver innovative diagnostic technologies and biomedical solutions with precision, trust, and unmatched service quality."
+          badge="Why Pathology Teams Work With Us"
+          title="Clinical Laboratory Sourcing Partner"
+          description="We help organizations identify appropriate diagnostic technologies and maintain dependable biomedical operations through informed support."
           center
         />
 

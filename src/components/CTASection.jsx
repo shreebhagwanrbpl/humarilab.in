@@ -82,16 +82,9 @@ export default function CTASection({ city }) {
                 Get In Touch
               </span>
 
-              <h2 className="text-4xl lg:text-6xl font-bold leading-tight">
-                Need Premium Biomedical Solutions?
-              </h2>
+              <h2 className="text-4xl lg:text-6xl font-bold leading-tight">Setting Up a Diagnostic Lab?</h2>
 
-              <p className="mt-6 text-[#F5EDE6] text-lg leading-8 max-w-xl">
-                Discover innovative diagnostic
-                systems and trusted biomedical
-                technologies tailored for modern
-                healthcare excellence.
-              </p>
+              <p className="mt-6 text-[#F5EDE6] text-lg leading-8 max-w-xl">Source advanced clinical pathology analyzers, biochemistry systems, and diagnostic reagents to ensure precise laboratory testing.</p>
 
             </div>
 
@@ -115,7 +108,7 @@ export default function CTASection({ city }) {
                 </h3>
 
                 <p className="mt-3 leading-7 text-[#6B7280]">
-                  Contact our biomedical experts
+                  Contact our pathology laboratory consultants
                   for consultation, equipment,
                   and healthcare support.
                 </p>

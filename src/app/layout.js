@@ -5,42 +5,38 @@ import { Toaster } from "react-hot-toast";
 
 export const metadata = {
   metadataBase: new URL(
-    "https://centralbiomedicals.com"
+    "https://humarilab.in"
   ),
 
-  title:
-    "Biomedical Equipment Supplier in India | Central Biomedicals",
+  title: "Pathology & Clinical Laboratory Equipment | Raj Biosis",
 
-  description:
-    "Central Biomedicals supplies CBC Machines, Hematology Analyzers, Biochemistry Analyzers, ELISA Readers and laboratory equipment across India.",
+  description: "Raj Biosis supplies clinical pathology laboratory systems, biochemistry analyzers, hematology counters, and diagnostics reagents to hospitals across India.",
 
   keywords: [
-    "Biomedical Equipment Supplier",
-    "Laboratory Equipment Supplier",
-    "CBC Machine Supplier",
-    "Hematology Analyzer Supplier",
-    "Biochemistry Analyzer Supplier",
-    "Diagnostic Equipment Supplier",
-    "Medical Equipment Supplier India",
+    "Clinical Laboratory Equipment",
+    "Pathology Analyzers Supplier",
+    "Biochemistry Analyzers Dealer",
+    "CBC Machine Distributor India",
+    "Hematology Systems",
+    "Lab Reagents & Calibrators",
+    "Diagnostic Laboratory Setup",
   ],
 
   openGraph: {
-    title:
-      "Biomedical Equipment Supplier in India | Central Biomedicals",
+    title: "Pathology & Clinical Laboratory Equipment | Raj Biosis",
 
-    description:
-      "Supplier of biomedical and laboratory equipment across India.",
+    description: "Premium supplier of diagnostics and medical equipment across India.",
 
-    url: "https://centralbiomedicals.com",
+    url: "https://humarilab.in",
 
-    siteName: "Central Biomedicals",
+    siteName: "Raj Biosis",
 
     images: [
       {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "Central Biomedicals",
+        alt: "Raj Biosis",
       },
     ],
 
@@ -51,17 +47,15 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
 
-    title:
-      "Biomedical Equipment Supplier in India | Central Biomedicals",
+    title: "Pathology & Clinical Laboratory Equipment | Raj Biosis",
 
-    description:
-      "Supplier of biomedical and laboratory equipment across India.",
+    description: "Premium supplier of diagnostics and medical equipment across India.",
 
     images: ["/logo.png"],
   },
 
   alternates: {
-    canonical: "https://centralbiomedicals.com",
+    canonical: "https://humarilab.in",
   },
 };
 

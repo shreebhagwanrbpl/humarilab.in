@@ -6,19 +6,19 @@ export async function generateMetadata({ params }) {
     .replace(/-/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-  const url = `https://centralbiomedical.com/${district}`;
+  const url = `https://humarilab.in/${district}`;
 
   return {
-    title: `Biomedical & Diagnostic Equipment Supplier in ${districtName} | Central Biomedical`,
+    title: `Pathology & Clinical Lab Equipment in ${districtName} | Raj Biosis`,
 
-    description: `Central Biomedical supplies diagnostic machines, laboratory equipment, reagents and biomedical products in ${districtName}.`,
+    description: `Raj Biosis helps hospitals and clinical labs in ${districtName} source pathology analyzers, biochemistry systems, and diagnostics reagents.`,
 
     keywords: [
-      `Biomedical Equipment ${districtName}`,
-      `Diagnostic Machines ${districtName}`,
-      `Laboratory Equipment ${districtName}`,
       `Pathology Equipment ${districtName}`,
-      `Biomedical Supplier ${districtName}`,
+      `Clinical Laboratory ${districtName}`,
+      `Biochemistry Analyzer ${districtName}`,
+      `CBC Machine Supplier ${districtName}`,
+      `Hematology System ${districtName}`,
     ],
 
     robots: {
@@ -31,8 +31,8 @@ export async function generateMetadata({ params }) {
     },
 
     openGraph: {
-      title: `Biomedical Equipment in ${districtName}`,
-      description: `Diagnostic laboratory equipment supplier in ${districtName}.`,
+      title: `Pathology & Clinical Lab Equipment in ${districtName} | Raj Biosis`,
+      description: `Raj Biosis helps hospitals and clinical labs in ${districtName} source pathology analyzers, biochemistry systems, and diagnostics reagents.`,
       url,
       type: "website",
     },

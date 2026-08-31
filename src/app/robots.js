@@ -3,9 +3,12 @@ export default function robots() {
         rules: {
             userAgent: "*",
             allow: "/",
+            disallow: [
+                "/*?*",      // Disallow filtered, sorted, or search query parameters to conserve crawl budget
+                "/api/",     // Disallow API proxy paths
+            ],
         },
 
-        sitemap:
-            "https://centralbiomedicals.com/sitemap.xml",
+        sitemap: "https://humarilab.in/sitemap.xml",
     };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,11 +12,10 @@ import {
 } from "lucide-react";
 
 export default function Footer() {
-  const [contactInfo, setContactInfo] =
-    useState([]);
+  const [contactInfo, setContactInfo] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [districtData, setDistrictData] =
-    useState(null);
+  const [districtData, setDistrictData] = useState(null);
 
   const pathname = usePathname();
 
@@ -39,32 +38,37 @@ export default function Footer() {
       : "";
 
   useEffect(() => {
-    const loadContact = async () => {
+    const loadFooterData = async () => {
       try {
+        // Load contact info
         const snap = await getDoc(
-          doc(
-            db,
-            "websites",
-            "centralbiomedicals",
-            "pages",
-            "contact"
-          )
+          doc(db, "websites", "humarilabin", "pages", "contact")
         );
 
         if (snap.exists()) {
-          setContactInfo(
-            snap.data().contactInfo || []
-          );
+          setContactInfo(snap.data().contactInfo || []);
         }
 
-        setLoading(false);
+        // Load categories
+        const categorySnap = await getDocs(
+          collection(db, "websites", "humarilabin", "pages", "categoryproducts", "categories")
+        );
+        const catList = categorySnap.docs.map((doc) => {
+          const data = doc.data();
+          return data.category || doc.id;
+        });
+
+        // Filter unique and non-empty categories
+        const uniqueCats = Array.from(new Set(catList.filter(Boolean)));
+        setCategories(uniqueCats);
       } catch (err) {
-        console.log(err);
+        console.error("Error loading footer data:", err);
+      } finally {
         setLoading(false);
       }
     };
 
-    loadContact();
+    loadFooterData();
   }, []);
 
   useEffect(() => {
@@ -76,7 +80,7 @@ export default function Footer() {
           doc(
             db,
             "websites",
-            "centralbiomedicals",
+            "humarilabin",
             "districts",
             district
           )
@@ -93,19 +97,25 @@ export default function Footer() {
     loadDistrict();
   }, [district]);
 
-  const phone =
+  const phoneVal =
     contactInfo.find(
-      (x) => x.label === "Phone Number"
+      (x) => x.label === "Mobile / WhatsApp" || x.label === "Phone"
     )?.value || "";
+
+  const phoneNumbers = Array.isArray(phoneVal)
+    ? phoneVal.filter(Boolean)
+    : phoneVal
+      ? [phoneVal]
+      : [];
 
   const email =
     contactInfo.find(
-      (x) => x.label === "Email Address"
+      (x) => x.label === "Business Email" || x.label === "Email"
     )?.value || "";
 
   const address =
     contactInfo.find(
-      (x) => x.label === "Office Address"
+      (x) => x.label === "Office Address" || x.label === "Address"
     )?.value || "";
 
   const dynamicAddress =
@@ -157,7 +167,7 @@ export default function Footer() {
 
       <div className="container-custom py-16">
 
-        <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-10">
+        <div className="grid lg:grid-cols-[1.4fr_0.8fr_1.2fr_1.6fr] md:grid-cols-2 gap-10 lg:gap-12">
 
           {/* Company */}
 
@@ -165,10 +175,10 @@ export default function Footer() {
 
             <h2 className="text-2xl font-bold text-[#6F4E37]">
 
-              Central
+              Raj
 
               <span className="text-[#2C2C2C]">
-                {" "}Biomedicals
+                {" "}Biosis
               </span>
 
             </h2>
@@ -181,6 +191,54 @@ export default function Footer() {
               precision healthcare support.
 
             </p>
+
+            {/* Social Links */}
+            <div className="flex gap-4 mt-6">
+              <a
+                href="https://www.facebook.com/rajbiosispvtltd/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8] text-[#6F4E37] transition hover:bg-[#6F4E37] hover:text-white"
+                aria-label="Facebook"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                </svg>
+              </a>
+              <a
+                href="https://www.instagram.com/rajbiosisindia/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8] text-[#6F4E37] transition hover:bg-[#6F4E37] hover:text-white"
+                aria-label="Instagram"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                </svg>
+              </a>
+            </div>
 
           </div>
 
@@ -233,21 +291,31 @@ export default function Footer() {
 
           </div>
 
-          {/* Services */}
+          {/* Services / Categories */}
 
           <div>
 
             <h3 className="mb-5 text-lg font-bold text-[#2C2C2C]">
-              Services
+              Categories
             </h3>
 
             <div className="space-y-3 text-[#6B7280]">
-
-              <p>Diagnostic Equipment</p>
-              <p>Laboratory Solutions</p>
-              <p>Biomedical Instruments</p>
-              <p>Maintenance Support</p>
-
+              {categories.slice(0, 7).map((cat, idx) => (
+                <Link
+                  key={idx}
+                  href={makeLink(`/items?category=${encodeURIComponent(cat)}`)}
+                  className="block transition hover:text-[#6F4E37]"
+                >
+                  {cat}
+                </Link>
+              ))}
+              {categories.length === 0 && (
+                <>
+                  <p>Hematology Systems</p>
+                  <p>Biochemistry Analyzers</p>
+                  <p>Urine Chemistry Devices</p>
+                </>
+              )}
             </div>
 
           </div>
@@ -264,7 +332,7 @@ export default function Footer() {
 
               <div className="flex items-start gap-3">
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EADBC8] mt-1">
 
                   <MapPin
                     size={18}
@@ -279,9 +347,9 @@ export default function Footer() {
 
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8] mt-0.5">
 
                   <Phone
                     size={18}
@@ -290,9 +358,20 @@ export default function Footer() {
 
                 </div>
 
-                <p className="text-[#6B7280]">
-                  {phone}
-                </p>
+                <div className="flex flex-col gap-1 text-[#6B7280]">
+                  {phoneNumbers.map((number, idx) => {
+                    const phoneText = String(number);
+                    return (
+                      <a
+                        key={idx}
+                        href={`tel:${phoneText.replace(/[^\d+]/g, "")}`}
+                        className="transition hover:text-[#6F4E37]"
+                      >
+                        {phoneText}
+                      </a>
+                    );
+                  })}
+                </div>
 
               </div>
 
@@ -324,12 +403,12 @@ export default function Footer() {
         <div className="mt-12 flex flex-col items-center justify-between border-t border-[#DCCBB8] pt-6 text-sm text-[#8D6E63] md:flex-row">
 
           <p>
-            © 2026 <span className="font-semibold text-[#6F4E37]">Central Biomedicals</span>.
+            © 2026 <span className="font-semibold text-[#6F4E37]">Raj Biosis</span>.
             All rights reserved.
           </p>
 
           <p className="mt-3 md:mt-0">
-            Designed with precision for modern diagnostics.
+            Designed with precision for clinical pathology and laboratory diagnostics.
           </p>
 
         </div>

@@ -228,3 +228,19 @@ header {
       transparent);
   animation: shimmer 1.8s infinite;
 }
+
+
+/* SITE 8 — coffee / warm professional */
+.site8-static{--sv-accent:#6f4e37;--sv-deep:#3e2723;--sv-soft:#fff8f3}
+.site8-static h1,.site8-static h2,.site8-static h3{font-family:Georgia,serif;letter-spacing:-.02em}
+.site8-static .container-custom{max-width:1140px}
+.site8-static section:nth-of-type(odd){background:#fff8f3!important}
+.site8-static section:nth-of-type(even){background:#fff!important}
+.site8-static .rounded-3xl,.site8-static .rounded-\[40px\]{border-radius:18px 48px 18px 48px!important}
+.site8-static .card-shadow{box-shadow:0 18px 48px rgba(111,78,55,.11)!important}
+.site8-static button{border-radius:18px 5px 18px 5px!important}
+.site8-static input,.site8-static textarea{border-radius:10px!important;background:#fffaf6!important}
+.site8-static section:has(form) .container-custom{grid-template-columns:1.05fr .95fr}
+.site8-static section:has(form) .container-custom>div:last-child{border:1px solid #eadbc8;background:#fff8f3!important}
+.site8-static iframe{border-radius:18px 48px 18px 48px!important}
+
