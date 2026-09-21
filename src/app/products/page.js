@@ -183,7 +183,7 @@ export default function ProductsPage() {
 
     <section className="py-24 bg-slate-50">
 
-      <div className="max-w-7xl mx-auto px-5">
+      <div className="container-custom">
 
         <SectionTitle
           badge="Featured Products"
@@ -472,7 +472,7 @@ export default function ProductsPage() {
 
       <section className="py-24 bg-white">
 
-        <div className="max-w-7xl mx-auto px-5">
+        <div className="container-custom">
 
           <SectionTitle
             badge="Why Choose Pathology & Laboratory Portfolio"

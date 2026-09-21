@@ -1,103 +1,59 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Microscope,
-  FlaskConical,
-  ShieldCheck,
-  Stethoscope,
-} from "lucide-react";
-
+import { ClipboardCheck, Boxes, Wrench, FileText } from "lucide-react";
 import SectionTitle from "./SectionTitle";
 import ServiceCard from "./ServiceCard";
 
 export default function ServicesPreview() {
   const services = [
     {
-      icon: <Microscope size={30} />,
-      title: "Hematology Systems",
-      description:
-        "Sourcing 3-part and 5-part hematology counters and CBC machines.",
+      icon: <Boxes size={30} />,
+      title: "Catalogue Supply",
+      description: "Access a mixed range of laboratory, diagnostic, clinical and biomedical products for routine and institutional requirements.",
     },
     {
-      icon: <FlaskConical size={30} />,
-      title: "Biochemistry Analyzers",
-      description:
-        "Installing automatic and semi-automatic biochemistry testing platforms.",
+      icon: <ClipboardCheck size={30} />,
+      title: "Requirement Matching",
+      description: "Share the intended application, quantity or technical need and receive help identifying relevant product options.",
     },
     {
-      icon: <ShieldCheck size={30} />,
-      title: "Urine Chemistry Devices",
-      description:
-        "Providing urine chemistry strip analyzers and clinical diagnostics systems.",
+      icon: <FileText size={30} />,
+      title: "Quotation Coordination",
+      description: "Product enquiries can be converted into structured quotation discussions for individual or multi-item purchases.",
     },
     {
-      icon: <Stethoscope size={30} />,
-      title: "NABL Calibration",
-      description:
-        "Ensuring CE/ISO compliance and NABL-conformant calibration for pathology instruments.",
-    }
+      icon: <Wrench size={30} />,
+      title: "Equipment Support",
+      description: "For eligible equipment, installation, operating guidance and after-sales coordination can be discussed with the selected supplier.",
+    },
   ];
 
   return (
     <section className="relative overflow-hidden section-padding bg-gradient-to-br from-[#F8F5F2] via-[#FFFDFB] to-[#F3ECE6]">
-
-      {/* Coffee Glow */}
-
       <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#B08968]/15 blur-[120px]" />
-
       <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-[#6F4E37]/10 blur-[120px]" />
-
       <div className="container-custom relative z-10">
-
-        {/* Title */}
-
         <SectionTitle
-          badge="Pathology Support Services"
-          title="Laboratory Equipment & Biomedical Services"
-          description="We support healthcare and laboratory teams with suitable technologies, equipment sourcing, and practical implementation guidance."
+          badge="How We Help"
+          title="Support that covers the product journey"
+          description="From finding an item in the catalogue to discussing a larger supply requirement, the focus is on making biomedical purchasing easier to organise."
           center
         />
-
-        {/* Cards */}
-
         <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-
           {services.map((service, index) => (
-
             <motion.div
-              key={index}
-              initial={{
-                opacity: 0,
-                y: 50,
-              }}
-              whileInView={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.5,
-                delay: index * 0.15,
-              }}
-              viewport={{
-                once: true,
-              }}
+              key={service.title}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.12 }}
+              viewport={{ once: true }}
             >
-
-              <ServiceCard
-                icon={service.icon}
-                title={service.title}
-                description={service.description}
-              />
-
+              <ServiceCard icon={service.icon} title={service.title} description={service.description} />
             </motion.div>
-
           ))}
-
         </div>
-
       </div>
-
     </section>
   );
 }

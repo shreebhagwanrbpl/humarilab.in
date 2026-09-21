@@ -233,7 +233,6 @@ header {
 /* SITE 8 — coffee / warm professional */
 .site8-static{--sv-accent:#6f4e37;--sv-deep:#3e2723;--sv-soft:#fff8f3}
 .site8-static h1,.site8-static h2,.site8-static h3{font-family:Georgia,serif;letter-spacing:-.02em}
-.site8-static .container-custom{max-width:1140px}
 .site8-static section:nth-of-type(odd){background:#fff8f3!important}
 .site8-static section:nth-of-type(even){background:#fff!important}
 .site8-static .rounded-3xl,.site8-static .rounded-\[40px\]{border-radius:18px 48px 18px 48px!important}

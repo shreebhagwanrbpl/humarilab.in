@@ -5,6 +5,9 @@ import {
 } from "firebase/firestore";
 import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const makeSlug = (text = "") =>
     text
         .toLowerCase()
@@ -58,7 +61,7 @@ export default async function sitemap() {
             addUrl(`${baseUrl}/${slug}/items`, "daily", 0.7);
         });
 
-        // PRODUCTS & CATEGORIES & BRANDS
+        // PRODUCTS & CATEGORIES & BRANDS (From Master Catalog)
         const products = await fetchFullCatalog();
 
         const categories = new Set();

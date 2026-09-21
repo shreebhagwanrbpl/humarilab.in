@@ -264,9 +264,9 @@ export default function ProductDetails({ slug }) {
             .replace(/\b\w/g, (char) => char.toUpperCase());
 
     useEffect(() => {
-        const loadProduct = async () => {
+        const loadProduct = async (force = false) => {
             try {
-                const allProducts = await fetchFullCatalog();
+                const allProducts = await fetchFullCatalog({ forceRefresh: force });
                 const found = allProducts.find(
                     (p) => p.slug === slug
                 );
@@ -281,11 +281,24 @@ export default function ProductDetails({ slug }) {
                     setSelectedMedia("image");
                 }
             } catch (error) {
-                console.error(error);
+                console.error("Error loading product detail:", error);
             }
         };
 
-        loadProduct();
+        loadProduct(false);
+
+        const onFocus = () => loadProduct(true);
+        const onVisibilityChange = () => {
+            if (document.visibilityState === "visible") loadProduct(true);
+        };
+
+        window.addEventListener("focus", onFocus);
+        document.addEventListener("visibilitychange", onVisibilityChange);
+
+        return () => {
+            window.removeEventListener("focus", onFocus);
+            document.removeEventListener("visibilitychange", onVisibilityChange);
+        };
     }, [slug]);
 
     const handleSubmit = async (e) => {

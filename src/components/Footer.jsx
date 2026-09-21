@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getWebsiteConfig, isItemVisible } from "@/lib/constants";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -49,14 +50,18 @@ export default function Footer() {
           setContactInfo(snap.data().contactInfo || []);
         }
 
-        // Load categories
+        // Load visible categories from Master Catalog
+        const config = getWebsiteConfig();
+        const companyId = config.companyId || "rajbiosis";
         const categorySnap = await getDocs(
-          collection(db, "websites", "humarilabin", "pages", "categoryproducts", "categories")
+          collection(db, "companies", companyId, "categories")
         );
-        const catList = categorySnap.docs.map((doc) => {
-          const data = doc.data();
-          return data.category || doc.id;
-        });
+        const catList = categorySnap.docs
+          .filter((d) => isItemVisible(d.data()))
+          .map((doc) => {
+            const data = doc.data();
+            return data.name || data.category || doc.id;
+          });
 
         // Filter unique and non-empty categories
         const uniqueCats = Array.from(new Set(catList.filter(Boolean)));
@@ -185,10 +190,10 @@ export default function Footer() {
 
             <p className="mt-5 leading-7 text-[#6B7280]">
 
-              Delivering trusted diagnostic
-              and biomedical solutions with
-              innovation, quality, and
-              precision healthcare support.
+              A broad catalogue for biomedical
+              equipment, diagnostics, laboratory
+              products, consumables and other
+              professional healthcare requirements.
 
             </p>
 

@@ -34,22 +34,30 @@ const ProductCard = React.memo(function ProductCard({ product, district }) {
                             product.desc ||
                             "Biomedical equipment intended for laboratories, hospitals, diagnostic centres, and other professional healthcare settings."}
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
-                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-2xl p-4 hover:border-[#B08968] hover:bg-white transition duration-300">
-                            <p className="text-xs uppercase text-[#6F4E37] font-semibold tracking-wider">Brand</p>
-                            <p className="font-bold text-[#2C2C2C] mt-1 text-sm">{product.brand || "N/A"}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">
+                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-xl p-2.5 sm:p-3 text-left hover:border-[#B08968] hover:bg-white transition-colors duration-200 flex flex-col justify-between">
+                            <span className="block text-[10.5px] uppercase tracking-wider text-[#8C6D53] font-semibold mb-1">Brand</span>
+                            <span className="font-bold text-[#2C2C2C] text-xs sm:text-[13px] leading-snug line-clamp-2 min-h-[34px] flex items-center" title={product.brand || "N/A"}>
+                                {product.brand || "N/A"}
+                            </span>
                         </div>
-                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-2xl p-4 hover:border-[#B08968] hover:bg-white transition duration-300">
-                            <p className="text-xs uppercase text-[#6F4E37] font-semibold tracking-wider">Model</p>
-                            <p className="font-bold text-[#2C2C2C] mt-1 text-sm">{product.model || "N/A"}</p>
+                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-xl p-2.5 sm:p-3 text-left hover:border-[#B08968] hover:bg-white transition-colors duration-200 flex flex-col justify-between">
+                            <span className="block text-[10.5px] uppercase tracking-wider text-[#8C6D53] font-semibold mb-1">Model</span>
+                            <span className="font-bold text-[#2C2C2C] text-xs sm:text-[13px] leading-snug line-clamp-2 min-h-[34px] flex items-center" title={product.model || "N/A"}>
+                                {product.model || "N/A"}
+                            </span>
                         </div>
-                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-2xl p-4 hover:border-[#B08968] hover:bg-white transition duration-300">
-                            <p className="text-xs uppercase text-[#6F4E37] font-semibold tracking-wider">Instrument</p>
-                            <p className="font-bold text-[#2C2C2C] mt-1 text-sm">{product.instrument || "N/A"}</p>
+                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-xl p-2.5 sm:p-3 text-left hover:border-[#B08968] hover:bg-white transition-colors duration-200 flex flex-col justify-between">
+                            <span className="block text-[10.5px] uppercase tracking-wider text-[#8C6D53] font-semibold mb-1">Instrument</span>
+                            <span className="font-bold text-[#2C2C2C] text-xs sm:text-[13px] leading-snug line-clamp-2 min-h-[34px] flex items-center" title={product.instrument || "N/A"}>
+                                {product.instrument || "N/A"}
+                            </span>
                         </div>
-                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-2xl p-4 hover:border-[#B08968] hover:bg-white transition duration-300">
-                            <p className="text-xs uppercase text-[#6F4E37] font-semibold tracking-wider">Category</p>
-                            <p className="font-bold text-[#2C2C2C] mt-1 text-sm">{product.category || "N/A"}</p>
+                        <div className="bg-[#FFF8F3] border border-[#EADBC8] rounded-xl p-2.5 sm:p-3 text-left hover:border-[#B08968] hover:bg-white transition-colors duration-200 flex flex-col justify-between">
+                            <span className="block text-[10.5px] uppercase tracking-wider text-[#8C6D53] font-semibold mb-1">Category</span>
+                            <span className="font-bold text-[#2C2C2C] text-xs sm:text-[13px] leading-snug line-clamp-2 min-h-[34px] flex items-center" title={product.category || "N/A"}>
+                                {product.category || "N/A"}
+                            </span>
                         </div>
                     </div>
                 </div>

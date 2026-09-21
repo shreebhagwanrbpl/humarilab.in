@@ -1,5 +1,8 @@
 import ProductsPage from "@/app/items/page";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata({ params }) {
   const { district = "jaipur" } = await params;
   const districtName = district
@@ -16,7 +19,6 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function Page({ params }) {
-
   const { district = "jaipur" } = await params;
 
   const city = district

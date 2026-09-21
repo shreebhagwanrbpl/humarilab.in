@@ -8,24 +8,24 @@ export const metadata = {
     "https://humarilab.in"
   ),
 
-  title: "Pathology & Clinical Laboratory Equipment | Raj Biosis",
+  title: "Biomedical Products, Equipment & Diagnostic Supplies | Raj Biosis",
 
-  description: "Raj Biosis supplies clinical pathology laboratory systems, biochemistry analyzers, hematology counters, and diagnostics reagents to hospitals across India.",
+  description: "Explore a broad Raj Biosis catalogue of biomedical equipment, diagnostic products, laboratory items, reagents, consumables and healthcare supplies.",
 
   keywords: [
-    "Clinical Laboratory Equipment",
-    "Pathology Analyzers Supplier",
-    "Biochemistry Analyzers Dealer",
-    "CBC Machine Distributor India",
-    "Hematology Systems",
-    "Lab Reagents & Calibrators",
-    "Diagnostic Laboratory Setup",
+    "Biomedical Products",
+    "Medical Equipment",
+    "Diagnostic Products",
+    "Laboratory Equipment",
+    "Medical Consumables",
+    "Diagnostic Test Kits",
+    "Lab Reagents",
+    "Healthcare Equipment Supplier",
   ],
 
   openGraph: {
-    title: "Pathology & Clinical Laboratory Equipment | Raj Biosis",
-
-    description: "Premium supplier of diagnostics and medical equipment across India.",
+    title: "Biomedical Products, Equipment & Diagnostic Supplies | Raj Biosis",
+    description: "Browse biomedical equipment, diagnostics, laboratory products, reagents, consumables and healthcare supplies.",
 
     url: "https://humarilab.in",
 
@@ -46,10 +46,8 @@ export const metadata = {
 
   twitter: {
     card: "summary_large_image",
-
-    title: "Pathology & Clinical Laboratory Equipment | Raj Biosis",
-
-    description: "Premium supplier of diagnostics and medical equipment across India.",
+    title: "Biomedical Products & Healthcare Supplies | Raj Biosis",
+    description: "A broad catalogue for biomedical, diagnostic, laboratory and healthcare product requirements.",
 
     images: ["/logo.png"],
   },

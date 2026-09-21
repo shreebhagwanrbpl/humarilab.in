@@ -1,43 +1,15 @@
-import { db } from "@/lib/firebase";
-import { doc, getDoc, getDocs, collection } from "firebase/firestore";
+import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 import ProductDetails from "../../../items/[slug]/ProductDetails";
 
-const makeSlug = (text = "") =>
-    text
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-");
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function getProductBySlug(slug) {
     try {
-        const snap = await getDoc(
-            doc(db, "websites", "humarilabin", "pages", "products")
-        );
-        let allProducts = [];
-        if (snap.exists()) {
-            allProducts = (snap.data().products || []).map((item) => ({
-                ...item,
-                slug: item.slug || item.productSlug || makeSlug(item.title),
-            }));
-        }
-        const categorySnap = await getDocs(
-            collection(db, "websites", "humarilabin", "pages", "categoryproducts", "categories")
-        );
-        categorySnap.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data.products?.length) {
-                allProducts.push(
-                    ...(data.products || []).map((item) => ({
-                        ...item,
-                        slug: item.slug || item.productSlug || makeSlug(item.title),
-                    }))
-                );
-            }
-        });
+        const allProducts = await fetchFullCatalog();
         return allProducts.find((p) => p.slug === slug) || null;
     } catch (e) {
-        console.error(e);
+        console.error("Error finding district product by slug:", e);
         return null;
     }
 }

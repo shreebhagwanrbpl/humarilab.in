@@ -7,8 +7,8 @@ export async function generateMetadata({ params }) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
   return {
-    title: `Biomedical & Laboratory Services in ${districtName} | Raj Biosis`,
-    description: `Explore biomedical supply, laboratory setup guidance, and procurement support services offered by Raj Biosis in ${districtName}, India.`,
+    title: `Biomedical Product Services in ${districtName} | Raj Biosis`,
+    description: `Explore product discovery, quotation, sourcing and multi-item biomedical enquiry support from Raj Biosis in ${districtName}, India.`,
     alternates: {
       canonical: `https://humarilab.in/${district}/services`,
     },
