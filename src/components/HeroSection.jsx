@@ -4,8 +4,6 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { doc, getDoc } from "firebase/firestore";
-
 import laboratoryHeroBanner from "../components/img/laboratory_hero_banner.png";
 import {
   ArrowRight,
@@ -20,19 +18,16 @@ import {
   CheckCircle2,
   Volume2,
   VolumeX,
-  Sparkles,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
+import { parseMediaFromData } from "@/lib/admin-api";
 
 export default function HeroSection({ city = "", initialData = null }) {
   const [heroContent, setHeroContent] = useState(
     initialData || {
-      title:
-        "Equipment, diagnostics and laboratory supplies for everyday healthcare needs",
-      description:
-        "Browse a broad biomedical catalogue covering instruments, diagnostic devices, test kits, reagents, consumables, monitoring products and supporting accessories.",
-      button1Text: "Browse the Catalogue",
-      button2Text: "Send a Requirement",
+      title: "",
+      description: "",
+      button1Text: "",
+      button2Text: "",
     }
   );
 
@@ -48,114 +43,27 @@ export default function HeroSection({ city = "", initialData = null }) {
 
   const SLIDE_DURATION = 3500; // 3.5 seconds per slide
 
-  // Parse Firestore Data into standard media items supporting ANY combination of multiple images & videos
-  const parseMediaFromData = useCallback((d) => {
-    const list = [];
-    const seenUrls = new Set();
-
-    // 1. Primary: SuperAdmin `media` array (contains mixed images & videos in configured order)
-    if (Array.isArray(d?.media) && d.media.length > 0) {
-      d.media.forEach((item, idx) => {
-        const url = typeof item === "string" ? item : item.url;
-        const type =
-          item.type ||
-          (url?.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) ? "video" : "image");
-        if (url && !seenUrls.has(url)) {
-          seenUrls.add(url);
-          list.push({
-            id: item.id || `media-${idx}`,
-            type,
-            url,
-            name: item.name || (type === "video" ? `Video ${idx + 1}` : `Image ${idx + 1}`),
-          });
-        }
-      });
-    }
-
-    // 2. Secondary / Fallback: If `media` array is empty, combine BOTH `images` and `videos` arrays
-    if (list.length === 0) {
-      // Multiple Images
-      if (Array.isArray(d?.images) && d.images.length > 0) {
-        d.images.forEach((url, idx) => {
-          if (url && !seenUrls.has(url)) {
-            seenUrls.add(url);
-            list.push({
-              id: `img-${idx}`,
-              type: "image",
-              url,
-              name: `Image ${idx + 1}`,
-            });
-          }
-        });
-      }
-
-      // Single Image fallback
-      const singleImg = d?.imageUrl || d?.image;
-      if (singleImg && !seenUrls.has(singleImg)) {
-        seenUrls.add(singleImg);
-        list.push({
-          id: `img-cover`,
-          type: "image",
-          url: singleImg,
-          name: "Cover Image",
-        });
-      }
-
-      // Multiple Videos (appended alongside images)
-      if (Array.isArray(d?.videos) && d.videos.length > 0) {
-        d.videos.forEach((vUrl, idx) => {
-          if (vUrl && !seenUrls.has(vUrl)) {
-            seenUrls.add(vUrl);
-            list.push({
-              id: `vid-${idx}`,
-              type: "video",
-              url: vUrl,
-              name: `Video ${idx + 1}`,
-            });
-          }
-        });
-      }
-
-      // Single Video fallback
-      if (d?.videoUrl && !seenUrls.has(d.videoUrl)) {
-        seenUrls.add(d.videoUrl);
-        list.push({
-          id: `vid-cover`,
-          type: "video",
-          url: d.videoUrl,
-          name: "Featured Video",
-        });
-      }
-    }
-
-    return list;
-  }, []);
-
-  // Fetch Firestore home data
+  // Fetch SQLite Admin home data
   useEffect(() => {
     let isMounted = true;
     const loadHeroContent = async () => {
       try {
-        const websiteId = "humarilabin";
-        const homeRef = doc(db, "websites", websiteId, "pages", "home");
-        const snapshot = await getDoc(homeRef);
+        const res = await fetch("/api/site-data?type=home");
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data && isMounted) {
+            const data = json.data;
 
-        if (snapshot.exists() && isMounted) {
-          const data = snapshot.data();
+            setHeroContent({
+              title: data.title || "",
+              description: data.description || "",
+              button1Text: data.button1Text || "",
+              button2Text: data.button2Text || "",
+            });
 
-          setHeroContent({
-            title:
-              data.title ||
-              "Equipment, diagnostics and laboratory supplies for everyday healthcare needs",
-            description:
-              data.description ||
-              "Browse a broad biomedical catalogue covering instruments, diagnostic devices, test kits, reagents, consumables, monitoring products and supporting accessories.",
-            button1Text: data.button1Text || "Browse the Catalogue",
-            button2Text: data.button2Text || "Send a Requirement",
-          });
-
-          const parsedMedia = parseMediaFromData(data);
-          setMediaList(parsedMedia);
+            const parsedMedia = parseMediaFromData(data);
+            setMediaList(parsedMedia);
+          }
         }
       } catch (error) {
         console.error("Failed to load home hero content:", error);
@@ -168,7 +76,7 @@ export default function HeroSection({ city = "", initialData = null }) {
     return () => {
       isMounted = false;
     };
-  }, [parseMediaFromData]);
+  }, []);
 
   // Slides array (Gracefully falls back to default local laboratory banner if no media exists)
   const slides = useMemo(() => {
@@ -308,7 +216,7 @@ export default function HeroSection({ city = "", initialData = null }) {
                 <div className="h-9 sm:h-11 bg-[#EADBC8]/60 rounded-xl animate-pulse w-[94%]" />
                 <div className="h-9 sm:h-11 bg-[#EADBC8]/60 rounded-xl animate-pulse w-[75%]" />
               </div>
-            ) : (
+            ) : heroContent.title ? (
               <h1 className="text-3xl sm:text-4xl lg:text-[38px] xl:text-[42px] font-extrabold leading-[1.15] tracking-tight text-[#222222]">
                 {heroContent.title}
                 {city && (
@@ -317,7 +225,7 @@ export default function HeroSection({ city = "", initialData = null }) {
                   </span>
                 )}
               </h1>
-            )}
+            ) : null}
 
             {/* Dynamic Description (Enlarged text) */}
             {isLoading ? (
@@ -325,14 +233,14 @@ export default function HeroSection({ city = "", initialData = null }) {
                 <div className="h-4 bg-[#EADBC8]/40 rounded animate-pulse w-full" />
                 <div className="h-4 bg-[#EADBC8]/40 rounded animate-pulse w-[88%]" />
               </div>
-            ) : (
+            ) : heroContent.description ? (
               <p className="mt-4 text-[#4B5563] text-sm sm:text-base lg:text-[16.5px] leading-relaxed">
                 {heroContent.description}
                 {city
                   ? ` Availability and enquiries can be arranged for ${city}.`
                   : ""}
               </p>
-            )}
+            ) : null}
 
             {/* Dynamic Action Buttons - STRICTLY SIDE BY SIDE */}
             <div className="flex flex-row items-center gap-3.5 sm:gap-4 mt-6 w-full">

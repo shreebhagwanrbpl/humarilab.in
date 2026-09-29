@@ -18,7 +18,7 @@ export async function GET(request) {
     try {
       products = getFullCatalog(targetCompanyId, targetWebsiteId);
     } catch (dbErr) {
-      console.warn("[api/catalog] Direct SQLite read failed, falling back to data fetcher:", dbErr);
+      console.warn("[api/products] Direct SQLite read failed, falling back to data fetcher:", dbErr);
       products = await fetchFullCatalog();
     }
 
@@ -40,11 +40,11 @@ export async function GET(request) {
       }
     );
   } catch (error) {
-    console.error("API /api/catalog Error:", error);
+    console.error("API /api/products Error:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to fetch master catalog",
+        error: error.message || "Failed to fetch products",
         products: [],
         count: 0,
         timestamp: Date.now(),

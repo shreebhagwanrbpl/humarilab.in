@@ -1,16 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { getWebsiteConfig, isItemVisible } from "@/lib/constants";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Mail,
-  Phone,
-  MapPin,
-} from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
+import { parseContactInfo } from "@/lib/admin-api";
 
 export default function Footer() {
   const [contactInfo, setContactInfo] = useState([]);
@@ -20,9 +14,7 @@ export default function Footer() {
 
   const pathname = usePathname();
 
-  const pathParts = pathname
-    .split("/")
-    .filter(Boolean);
+  const pathParts = pathname.split("/").filter(Boolean);
 
   const staticRoutes = [
     "about",
@@ -33,100 +25,85 @@ export default function Footer() {
   ];
 
   const district =
-    pathParts.length > 0 &&
-      !staticRoutes.includes(pathParts[0])
+    pathParts.length > 0 && !staticRoutes.includes(pathParts[0])
       ? pathParts[0]
       : "";
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadFooterData = async () => {
       try {
-        // Load contact info
-        const snap = await getDoc(
-          doc(db, "websites", "humarilabin", "pages", "contact")
-        );
-
-        if (snap.exists()) {
-          setContactInfo(snap.data().contactInfo || []);
+        // Load contact info from SQLite site-data API
+        const contactRes = await fetch("/api/site-data?type=contact");
+        if (contactRes.ok) {
+          const json = await contactRes.json();
+          if (isMounted && json?.data) {
+            setContactInfo(json.data.contactInfo || json.data || []);
+          }
         }
 
         // Load visible categories from Master Catalog
-        const config = getWebsiteConfig();
-        const companyId = config.companyId || "rajbiosis";
-        const categorySnap = await getDocs(
-          collection(db, "companies", companyId, "categories")
-        );
-        const catList = categorySnap.docs
-          .filter((d) => isItemVisible(d.data()))
-          .map((doc) => {
-            const data = doc.data();
-            return data.name || data.category || doc.id;
-          });
-
-        // Filter unique and non-empty categories
-        const uniqueCats = Array.from(new Set(catList.filter(Boolean)));
-        setCategories(uniqueCats);
+        const catalogRes = await fetch("/api/catalog");
+        if (catalogRes.ok) {
+          const json = await catalogRes.json();
+          if (isMounted && Array.isArray(json?.products)) {
+            const catList = json.products
+              .map((p) => p.category)
+              .filter(Boolean);
+            const uniqueCats = Array.from(new Set(catList));
+            setCategories(uniqueCats);
+          }
+        }
       } catch (err) {
         console.error("Error loading footer data:", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     loadFooterData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
+    if (!district) return;
+    let isMounted = true;
+
     const loadDistrict = async () => {
-      if (!district) return;
-
       try {
-        const snap = await getDoc(
-          doc(
-            db,
-            "websites",
-            "humarilabin",
-            "districts",
-            district
-          )
+        const res = await fetch(
+          `/api/site-data?type=district&district=${encodeURIComponent(district)}`
         );
-
-        if (snap.exists()) {
-          setDistrictData(snap.data());
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json?.data) {
+            setDistrictData(json.data);
+          }
         }
       } catch (err) {
-        console.log(err);
+        console.error("Error loading district in footer:", err);
       }
     };
 
     loadDistrict();
+    return () => {
+      isMounted = false;
+    };
   }, [district]);
 
-  const phoneVal =
-    contactInfo.find(
-      (x) => x.label === "Mobile / WhatsApp" || x.label === "Phone"
-    )?.value || "";
+  const parsedContact = parseContactInfo(contactInfo);
+  const phoneNumbers = parsedContact.phones;
+  const emailAddresses = parsedContact.emails;
+  const address = parsedContact.address;
 
-  const phoneNumbers = Array.isArray(phoneVal)
-    ? phoneVal.filter(Boolean)
-    : phoneVal
-      ? [phoneVal]
-      : [];
-
-  const email =
-    contactInfo.find(
-      (x) => x.label === "Business Email" || x.label === "Email"
-    )?.value || "";
-
-  const address =
-    contactInfo.find(
-      (x) => x.label === "Office Address" || x.label === "Address"
-    )?.value || "";
-
-  const dynamicAddress =
-    districtData
-      ? `${districtData.district}, ${districtData.state}, India`
-      : address;
+  const dynamicAddress = districtData
+    ? `${districtData.district || ""}${
+        districtData.state ? `, ${districtData.state}` : ""
+      }${districtData.country ? `, ${districtData.country}` : ", India"}`
+    : address;
 
   const makeLink = (path) => {
     if (!district) return path;
@@ -137,17 +114,15 @@ export default function Footer() {
 
     return `/${district}${path}`;
   };
+
   if (loading) {
     return (
       <footer className="bg-white border-t border-slate-200">
         <div className="container-custom py-16">
-
           <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-10">
-
             {[...Array(4)].map((_, i) => (
               <div key={i}>
                 <div className="h-8 w-40 bg-slate-200 rounded animate-pulse mb-6" />
-
                 {[...Array(5)].map((_, j) => (
                   <div
                     key={j}
@@ -156,45 +131,31 @@ export default function Footer() {
                 ))}
               </div>
             ))}
-
           </div>
 
           <div className="border-t border-slate-200 mt-12 pt-6">
             <div className="h-5 w-72 bg-slate-200 rounded animate-pulse" />
           </div>
-
         </div>
       </footer>
     );
   }
+
   return (
     <footer className="bg-[#F8F5F2] border-t border-[#EADBC8]">
-
       <div className="container-custom py-16">
-
         <div className="grid lg:grid-cols-[1.4fr_0.8fr_1.2fr_1.6fr] md:grid-cols-2 gap-10 lg:gap-12">
-
           {/* Company */}
-
           <div>
-
             <h2 className="text-2xl font-bold text-[#6F4E37]">
-
               Raj
-
-              <span className="text-[#2C2C2C]">
-                {" "}Biosis
-              </span>
-
+              <span className="text-[#2C2C2C]"> Biosis</span>
             </h2>
 
             <p className="mt-5 leading-7 text-[#6B7280]">
-
-              A broad catalogue for biomedical
-              equipment, diagnostics, laboratory
-              products, consumables and other
-              professional healthcare requirements.
-
+              A broad catalogue for biomedical equipment, diagnostics,
+              laboratory products, consumables and other professional healthcare
+              requirements.
             </p>
 
             {/* Social Links */}
@@ -244,19 +205,15 @@ export default function Footer() {
                 </svg>
               </a>
             </div>
-
           </div>
 
           {/* Quick Links */}
-
           <div>
-
             <h3 className="mb-5 text-lg font-bold text-[#2C2C2C]">
               Quick Links
             </h3>
 
             <div className="flex flex-col gap-3">
-
               <Link
                 href={makeLink("/")}
                 className="text-[#6B7280] transition hover:text-[#6F4E37]"
@@ -291,15 +248,11 @@ export default function Footer() {
               >
                 Contact
               </Link>
-
             </div>
-
           </div>
 
-          {/* Services / Categories */}
-
+          {/* Categories */}
           <div>
-
             <h3 className="mb-5 text-lg font-bold text-[#2C2C2C]">
               Categories
             </h3>
@@ -314,99 +267,71 @@ export default function Footer() {
                   {cat}
                 </Link>
               ))}
-              {categories.length === 0 && (
-                <>
-                  <p>Hematology Systems</p>
-                  <p>Biochemistry Analyzers</p>
-                  <p>Urine Chemistry Devices</p>
-                </>
-              )}
             </div>
-
           </div>
 
           {/* Contact */}
-
           <div>
-
             <h3 className="mb-5 text-lg font-bold text-[#2C2C2C]">
               Contact Info
             </h3>
 
             <div className="space-y-5">
-
-              <div className="flex items-start gap-3">
-
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EADBC8] mt-1">
-
-                  <MapPin
-                    size={18}
-                    className="text-[#6F4E37]"
-                  />
-
+              {dynamicAddress && (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EADBC8] mt-1">
+                    <MapPin size={18} className="text-[#6F4E37]" />
+                  </div>
+                  <p className="text-[#6B7280] leading-7">{dynamicAddress}</p>
                 </div>
+              )}
 
-                <p className="text-[#6B7280] leading-7">
-                  {dynamicAddress}
-                </p>
-
-              </div>
-
-              <div className="flex items-start gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8] mt-0.5">
-
-                  <Phone
-                    size={18}
-                    className="text-[#6F4E37]"
-                  />
-
+              {phoneNumbers.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8] mt-0.5">
+                    <Phone size={18} className="text-[#6F4E37]" />
+                  </div>
+                  <div className="flex flex-col gap-1 text-[#6B7280]">
+                    {phoneNumbers.map((number, idx) => {
+                      const phoneText = String(number);
+                      return (
+                        <a
+                          key={idx}
+                          href={`tel:${phoneText.replace(/[^\d+]/g, "")}`}
+                          className="transition hover:text-[#6F4E37]"
+                        >
+                          {phoneText}
+                        </a>
+                      );
+                    })}
+                  </div>
                 </div>
+              )}
 
-                <div className="flex flex-col gap-1 text-[#6B7280]">
-                  {phoneNumbers.map((number, idx) => {
-                    const phoneText = String(number);
-                    return (
+              {emailAddresses.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8]">
+                    <Mail size={18} className="text-[#6F4E37]" />
+                  </div>
+                  <div className="flex flex-col gap-1 text-[#6B7280]">
+                    {emailAddresses.map((emailText, idx) => (
                       <a
                         key={idx}
-                        href={`tel:${phoneText.replace(/[^\d+]/g, "")}`}
+                        href={`mailto:${emailText}`}
                         className="transition hover:text-[#6F4E37]"
                       >
-                        {phoneText}
+                        {emailText}
                       </a>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-
-              </div>
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EADBC8]">
-
-                  <Mail
-                    size={18}
-                    className="text-[#6F4E37]"
-                  />
-
-                </div>
-
-                <p className="text-[#6B7280]">
-                  {email}
-                </p>
-
-              </div>
-
+              )}
             </div>
-
           </div>
-
         </div>
 
         {/* Bottom */}
-
         <div className="mt-12 flex flex-col items-center justify-between border-t border-[#DCCBB8] pt-6 text-sm text-[#8D6E63] md:flex-row">
-
           <p>
             © 2026 <span className="font-semibold text-[#6F4E37]">Raj Biosis</span>.
             All rights reserved.
@@ -415,11 +340,8 @@ export default function Footer() {
           <p className="mt-3 md:mt-0">
             Designed with precision for clinical pathology and laboratory diagnostics.
           </p>
-
         </div>
-
       </div>
-
     </footer>
   );
 }

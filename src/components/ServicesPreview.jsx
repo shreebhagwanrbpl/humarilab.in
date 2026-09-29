@@ -1,33 +1,76 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardCheck, Boxes, Wrench, FileText } from "lucide-react";
+import {
+  ClipboardCheck,
+  Boxes,
+  Wrench,
+  FileText,
+  Settings2,
+  PackageSearch,
+  ShieldCheck,
+} from "lucide-react";
 import SectionTitle from "./SectionTitle";
 import ServiceCard from "./ServiceCard";
 
+const defaultIcons = [
+  <Wrench size={30} />,
+  <Settings2 size={30} />,
+  <ClipboardCheck size={30} />,
+  <PackageSearch size={30} />,
+  <ShieldCheck size={30} />,
+  <Boxes size={30} />,
+];
+
 export default function ServicesPreview() {
-  const services = [
-    {
-      icon: <Boxes size={30} />,
-      title: "Catalogue Supply",
-      description: "Access a mixed range of laboratory, diagnostic, clinical and biomedical products for routine and institutional requirements.",
-    },
-    {
-      icon: <ClipboardCheck size={30} />,
-      title: "Requirement Matching",
-      description: "Share the intended application, quantity or technical need and receive help identifying relevant product options.",
-    },
-    {
-      icon: <FileText size={30} />,
-      title: "Quotation Coordination",
-      description: "Product enquiries can be converted into structured quotation discussions for individual or multi-item purchases.",
-    },
-    {
-      icon: <Wrench size={30} />,
-      title: "Equipment Support",
-      description: "For eligible equipment, installation, operating guidance and after-sales coordination can be discussed with the selected supplier.",
-    },
-  ];
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadServices = async () => {
+      try {
+        const res = await fetch("/api/site-data?type=services");
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json?.data?.services) {
+            setServices(json.data.services);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading services preview:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadServices();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="relative overflow-hidden section-padding bg-gradient-to-br from-[#F8F5F2] via-[#FFFDFB] to-[#F3ECE6]">
+        <div className="container-custom relative z-10">
+          <SectionTitle
+            badge="How We Help"
+            title="Support that covers the product journey"
+            description="From finding an item in the catalogue to discussing a larger supply requirement, the focus is on making biomedical purchasing easier to organise."
+            center
+          />
+          <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <ServiceCard key={i} loading={true} />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (services.length === 0) return null;
 
   return (
     <section className="relative overflow-hidden section-padding bg-gradient-to-br from-[#F8F5F2] via-[#FFFDFB] to-[#F3ECE6]">
@@ -40,16 +83,20 @@ export default function ServicesPreview() {
           description="From finding an item in the catalogue to discussing a larger supply requirement, the focus is on making biomedical purchasing easier to organise."
           center
         />
-        <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {services.map((service, index) => (
+        <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {services.slice(0, 3).map((service, index) => (
             <motion.div
-              key={service.title}
+              key={service.title || index}
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.12 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <ServiceCard icon={service.icon} title={service.title} description={service.description} />
+              <ServiceCard
+                icon={defaultIcons[index % defaultIcons.length]}
+                title={service.title}
+                description={service.desc || service.description}
+              />
             </motion.div>
           ))}
         </div>

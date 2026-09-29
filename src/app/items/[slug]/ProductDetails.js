@@ -16,14 +16,7 @@ import {
     FaLink,
 } from "react-icons/fa";
 
-import {
-    doc,
-    getDoc,
-    getDocs,
-    addDoc,
-    collection,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { parseContactInfo } from "@/lib/admin-api";
 const makeSlug = (text = "") =>
     text
         .toLowerCase()
@@ -329,34 +322,36 @@ export default function ProductDetails({ slug }) {
         try {
             setSubmitting(true);
 
-            await addDoc(
-                collection(
-                    db,
-                    "websitesQueries",
-                    "humarilabin",
-                    "productQueries"
-                ),
-                {
+            const res = await fetch("/api/product-query", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
                     ...form,
                     productName: product.title,
                     productSlug: product.slug,
                     brand: product.brand || "",
                     model: product.model || "",
-                    createdAt: new Date(),
-                }
-            );
-
-            toast.success(
-                "Your enquiry has been submitted successfully."
-            );
-
-            setForm({
-                name: "",
-                email: "",
-                phone: "",
+                }),
             });
+
+            const json = await res.json();
+
+            if (res.ok && json.success) {
+                toast.success(
+                    json.message || "Your enquiry has been submitted successfully."
+                );
+                setForm({
+                    name: "",
+                    email: "",
+                    phone: "",
+                });
+            } else {
+                toast.error(json.error || "Something went wrong. Please try again.");
+            }
         } catch (error) {
-            console.error(error);
+            console.error("Product enquiry error:", error);
             toast.error(
                 "Something went wrong"
             );
@@ -455,16 +450,15 @@ export default function ProductDetails({ slug }) {
     };
 
     const handleWhatsapp = () => {
-        const shareText = `🔬 ${product?.title}
+        const parsed = parseContactInfo(contactInfo);
+        const targetNumber = parsed.whatsappNumber ? parsed.whatsappNumber.replace(/[^\d]/g, "") : "";
+        const shareText = `🔬 ${product?.title}\n\n${product?.desc || product?.description || ""}\n\n🌐 ${window.location.href}`;
 
-${product?.desc}
+        const waUrl = targetNumber
+            ? `https://wa.me/${targetNumber}?text=${encodeURIComponent(shareText)}`
+            : `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
-🌐 ${window.location.href}`;
-
-        window.open(
-            `https://wa.me/?text=${encodeURIComponent(shareText)}`,
-            "_blank"
-        );
+        window.open(waUrl, "_blank");
     };
 
     const handleFacebook = () => {
@@ -510,19 +504,24 @@ ${product?.desc}
     }, []);
 
     useEffect(() => {
+        let isMounted = true;
         const loadContact = async () => {
             try {
-                const snap = await getDoc(
-                    doc(db, "websites", "humarilabin", "pages", "contact")
-                );
-                if (snap.exists()) {
-                    setContactInfo(snap.data().contactInfo || []);
+                const res = await fetch("/api/site-data?type=contact");
+                if (res.ok) {
+                    const json = await res.json();
+                    if (isMounted && json?.data) {
+                        setContactInfo(json.data.contactInfo || json.data || []);
+                    }
                 }
             } catch (err) {
                 console.error("Error loading contact info in details:", err);
             }
         };
         loadContact();
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const handleDownloadBrochure = async () => {
@@ -589,14 +588,13 @@ ${product?.desc}
             doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
 
             const websiteText = getWebsiteDomain();
-            const rawPhone = contactInfo.find(x => x.label === "Phone Number")?.value || "+91 9983123469";
-            const emailText = contactInfo.find(x => x.label === "Email Address")?.value || "rajbiosis@yahoo.in";
-            const phoneNumbersList = Array.isArray(rawPhone) ? rawPhone.filter(Boolean) : rawPhone ? [rawPhone] : [];
-            const phoneString = phoneNumbersList.join(", ");
+            const parsed = parseContactInfo(contactInfo);
+            const phoneString = parsed.phones.join(", ");
+            const emailString = parsed.emails.join(", ");
 
             doc.text(`Website: ${websiteText}`, 140, 20);
-            doc.text(`Email: ${emailText}`, 140, 25);
-            doc.text(`Phone: ${phoneString}`, 140, 30);
+            if (emailString) doc.text(`Email: ${emailString}`, 140, 25);
+            if (phoneString) doc.text(`Phone: ${phoneString}`, 140, 30);
 
             doc.setDrawColor(colorLightBorder[0], colorLightBorder[1], colorLightBorder[2]);
             doc.setLineWidth(0.5);
