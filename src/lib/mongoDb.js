@@ -74,11 +74,21 @@ export function normalizeProduct(item, index = 0) {
     item.productSlug ||
     makeSlug(title || `product-${item.id || item._id || index}`);
 
-  const images = Array.isArray(item.images)
-    ? item.images.filter(Boolean)
+  const rawImages = Array.isArray(item.images) && item.images.length > 0
+    ? item.images
+    : Array.isArray(item.originalImages) && item.originalImages.length > 0
+    ? item.originalImages
     : item.image
     ? [item.image]
+    : item.imageUrl
+    ? [item.imageUrl]
     : [];
+
+  const images = rawImages.filter(Boolean);
+  const mainImage = images[0] || item.image || item.imageUrl || "";
+
+  const categoryName = (item.category || item.categoryName || "").trim();
+  const subCategoryName = (item.subCategory || item.subCategoryName || categoryName || "").trim();
 
   return {
     id: String(item.id || item._id || `prod-${index}`),
@@ -99,13 +109,13 @@ export function normalizeProduct(item, index = 0) {
     automation: item.automation || "",
     availability: item.availability || "",
     size: item.size || "",
-    category: item.category || "General Products",
-    subCategory: item.subCategory || item.category || "General Products",
+    category: categoryName || "Products",
+    subCategory: subCategoryName || categoryName || "Products",
     categoryId: item.categoryId || "general",
     subcategoryId: item.subcategoryId || "general",
     slug,
-    images,
-    image: images[0] || "",
+    images: images.length > 0 ? images : (mainImage ? [mainImage] : []),
+    image: mainImage,
     video: item.video || item.videoUrl || "",
     pdf: item.pdf || item.pdfUrl || "",
     isPublished: item.isPublished !== false,
@@ -247,30 +257,24 @@ export async function getFullCatalog(
       }
     }
 
-    // MODE 2: Direct MongoDB Collections (if `products` collection exists)
-    if (collectionNames.includes("products")) {
-      const prodColl = db.collection("products");
-      const filter = {
-        $or: [
-          { companyId },
-          { company_id: companyId },
-          { companyId: { $exists: false } },
-        ],
-      };
-
-      const nativeProds = await prodColl.find(filter).toArray();
-      for (const p of nativeProds) {
-        if (!isItemVisibleOnWebsite(p, websiteId)) continue;
-        allProducts.push(normalizeProduct(p, allProducts.length));
+    // Deduplicate products by slug to prevent duplicate General Products entries
+    const seenKeys = new Set();
+    const uniqueProducts = [];
+    for (const p of allProducts) {
+      if (!p) continue;
+      const key = (p.slug || p.id || p.title || "").toLowerCase();
+      if (key && !seenKeys.has(key)) {
+        seenKeys.add(key);
+        uniqueProducts.push(p);
       }
     }
 
     const duration = performance.now() - start;
     console.log(
-      `[mongoDb] getFullCatalog returned ${allProducts.length} visible products for ${websiteId} in ${duration.toFixed(2)}ms`
+      `[mongoDb] getFullCatalog returned ${uniqueProducts.length} unique visible products for ${websiteId} in ${duration.toFixed(2)}ms`
     );
 
-    return allProducts.filter(Boolean);
+    return uniqueProducts;
   } catch (err) {
     console.error("[mongoDb] Error executing getFullCatalog:", err);
     return [];
