@@ -1,6 +1,6 @@
 /**
  * Master Catalog and Site Data Fetcher for humarilab.in
- * Connects directly to SQLite catalog.db on server with instant zero-delay sync
+ * Connects directly to MongoDB Atlas SuperAdmin database
  */
 
 import { WEBSITE_ID, COMPANY_ID, makeSlug } from "./catalog-utils.js";
@@ -11,14 +11,14 @@ export { WEBSITE_ID, COMPANY_ID, makeSlug };
  * Universal Catalog Fetcher (Server + Client)
  */
 export async function fetchFullCatalog(options = {}) {
-  // If running on server side, read directly from SQLite DB in ~2ms
+  // If running on server side, read directly from MongoDB Atlas
   if (typeof window === "undefined") {
     try {
-      const { getFullCatalog } = await import("./sqliteDb.js");
-      const products = getFullCatalog(COMPANY_ID, WEBSITE_ID);
+      const { getFullCatalog } = await import("./mongoDb.js");
+      const products = await getFullCatalog(COMPANY_ID, WEBSITE_ID);
       return products;
     } catch (err) {
-      console.error("[data-fetcher] Server SQLite getFullCatalog error:", err);
+      console.error("[data-fetcher] Server MongoDB getFullCatalog error:", err);
     }
   }
 
@@ -45,8 +45,8 @@ export async function fetchFullCatalog(options = {}) {
 export async function fetchPageData(pageType = "home") {
   if (typeof window === "undefined") {
     try {
-      const { getPageData } = await import("./sqliteDb.js");
-      const data = getPageData(pageType, WEBSITE_ID, COMPANY_ID);
+      const { getPageData } = await import("./mongoDb.js");
+      const data = await getPageData(pageType, WEBSITE_ID, COMPANY_ID);
       return data;
     } catch (err) {
       console.error(`[data-fetcher] Server getPageData(${pageType}) error:`, err);
@@ -81,8 +81,8 @@ export async function fetchServicesData(options = {}) {
 export async function fetchDistricts(options = {}) {
   if (typeof window === "undefined") {
     try {
-      const { getDistricts } = await import("./sqliteDb.js");
-      return getDistricts(WEBSITE_ID, COMPANY_ID);
+      const { getDistricts } = await import("./mongoDb.js");
+      return await getDistricts(WEBSITE_ID, COMPANY_ID);
     } catch (err) {
       console.error("[data-fetcher] Server getDistricts error:", err);
     }

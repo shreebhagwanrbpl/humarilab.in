@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getFullCatalog } from "@/lib/sqliteDb";
+import { getFullCatalog } from "@/lib/mongoDb";
 import { fetchFullCatalog } from "@/lib/data-fetcher";
 import { WEBSITE_ID, COMPANY_ID } from "@/lib/catalog-utils";
 
@@ -13,12 +13,12 @@ export async function GET(request) {
     const targetWebsiteId = searchParams.get("websiteId") || WEBSITE_ID;
     const targetCompanyId = searchParams.get("companyId") || COMPANY_ID;
 
-    // Direct read from SQLite WAL database (<2ms)
+    // Direct read from MongoDB Atlas
     let products = [];
     try {
-      products = getFullCatalog(targetCompanyId, targetWebsiteId);
+      products = await getFullCatalog(targetCompanyId, targetWebsiteId);
     } catch (dbErr) {
-      console.warn("[api/catalog] Direct SQLite read failed, falling back to data fetcher:", dbErr);
+      console.warn("[api/catalog] Direct MongoDB read failed, falling back to data fetcher:", dbErr);
       products = await fetchFullCatalog();
     }
 

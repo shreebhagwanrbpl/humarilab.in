@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPageData, getDistricts, getDistrictData } from "@/lib/sqliteDb";
+import { getPageData, getDistricts, getDistrictData } from "@/lib/mongoDb";
 import { fetchSiteDataFromAdmin } from "@/lib/admin-api";
 import { WEBSITE_ID, COMPANY_ID } from "@/lib/catalog-utils";
 
@@ -21,20 +21,20 @@ export async function GET(request) {
 
     let data = null;
 
-    // 1. Direct local SQLite query (<2ms)
+    // 1. Direct local MongoDB Atlas query
     try {
       if (type === "districts") {
-        data = getDistricts(websiteId, companyId);
+        data = await getDistricts(websiteId, companyId);
       } else if (type === "district" && district) {
-        data = getDistrictData(district, websiteId, companyId);
+        data = await getDistrictData(district, websiteId, companyId);
       } else {
-        data = getPageData(page || type, websiteId, companyId);
+        data = await getPageData(page || type, websiteId, companyId);
       }
     } catch (e) {
-      console.warn("[api/site-data] Direct SQLite query failed, falling back:", e);
+      console.warn("[api/site-data] Direct MongoDB query failed, falling back:", e);
     }
 
-    // 2. Fallback to Admin API if not found in local SQLite
+    // 2. Fallback to Admin API if not found in local MongoDB
     if (!data) {
       data = await fetchSiteDataFromAdmin({
         type,
